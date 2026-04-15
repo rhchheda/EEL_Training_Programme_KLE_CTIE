@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basic Electrical & Electronics Training — EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #0A1628;
+    --blue:    #1054A8;
+    --lblue:   #2979D4;
+    --accent:  #F5A623;
+    --gold:    #FFD166;
+    --white:   #FFFFFF;
+    --offwht:  #F7F9FC;
+    --slate:   #3D5A80;
+    --grey:    #7B8FA6;
+    --lgrey:   #E8EDF3;
+    --green:   #06844B;
+    --orange:  #D45500;
+    --red:     #C0392B;
+    --card-bg: rgba(255,255,255,0.06);
+    --glass:   rgba(255,255,255,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── SLIDE ENGINE ── */
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.55s cubic-bezier(.4,0,.2,1), transform 0.55s cubic-bezier(.4,0,.2,1);
+    transform: translateX(60px);
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1; pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.exit {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── NAVIGATION ── */
+  .nav {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(10,22,40,0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px; padding: 10px 20px;
+    z-index: 1000; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .nav-btn {
+    background: none; border: none; color: var(--grey); cursor: pointer;
+    font-size: 18px; width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .nav-btn:hover { background: var(--glass); color: var(--white); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .slide-counter {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; color: var(--grey); min-width: 52px; text-align: center;
+    letter-spacing: 1px;
+  }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); cursor: pointer;
+    transition: all 0.2s; border: none;
+  }
+  .nav-dot.active { background: var(--accent); width: 20px; border-radius: 3px; }
+
+  /* ── SPEAKER NOTES ── */
+  .notes-toggle {
+    position: fixed; bottom: 28px; right: 28px;
+    background: rgba(10,22,40,0.85); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+    padding: 8px 16px; cursor: pointer; color: var(--grey);
+    font-size: 12px; font-family: 'DM Mono', monospace;
+    letter-spacing: 1px; z-index: 1000;
+    transition: all 0.2s;
+  }
+  .notes-toggle:hover { color: var(--white); border-color: var(--accent); }
+  .notes-panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(5,12,24,0.97); backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(245,166,35,0.3);
+    padding: 18px 40px 80px; max-height: 38vh;
+    overflow-y: auto; z-index: 999;
+    transform: translateY(100%); transition: transform 0.35s ease;
+  }
+  .notes-panel.open { transform: translateY(0); }
+  .notes-label {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--accent); letter-spacing: 2px; margin-bottom: 10px;
+  }
+  .notes-text { font-size: 13px; color: #A8BBCC; line-height: 1.7; max-width: 960px; }
+
+  /* ── SLIDE COUNTER (top right) ── */
+  .slide-num {
+    position: fixed; top: 24px; right: 28px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: rgba(255,255,255,0.25); z-index: 999; letter-spacing: 1px;
+  }
+
+  /* ── COMMON ELEMENTS ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(245,166,35,0.15); border: 1px solid rgba(245,166,35,0.35);
+    color: var(--gold); border-radius: 4px; padding: 4px 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    font-family: 'DM Mono', monospace;
+  }
+  .tag.blue {
+    background: rgba(41,121,212,0.15); border-color: rgba(41,121,212,0.4);
+    color: #6EB5FF;
+  }
+  .tag.green {
+    background: rgba(6,132,75,0.15); border-color: rgba(6,132,75,0.4);
+    color: #52E39A;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--accent); letter-spacing: 3px; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .card {
+    background: var(--glass);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 20px 24px;
+    backdrop-filter: blur(8px);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: rgba(245,166,35,0.3); transform: translateY(-2px); }
+  .card-accent { border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0; }
+
+  /* Grid background pattern */
+  .grid-bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(41,121,212,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(41,121,212,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* Circuit decoration */
+  .circuit-deco {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 45%; opacity: 0.12; pointer-events: none;
+  }
+
+  /* ════════════════════════════════════════
+     SLIDE 1 — TITLE
+  ════════════════════════════════════════ */
+  #s1 {
+    background: linear-gradient(135deg, #050E1F 0%, #0A1628 50%, #0D1F3C 100%);
+  }
+  #s1 .circuit-deco { opacity: 0.18; }
+  #s1 .accent-bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(180deg, var(--accent), var(--lblue));
+  }
+  #s1 .content {
+    position: relative; z-index: 2; padding: 52px 64px;
+    display: flex; flex-direction: column; height: 100%;
+    justify-content: center; max-width: 55%;
+  }
+  #s1 .inst-label {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--accent); letter-spacing: 3px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #s1 .inst-label::before {
+    content: ''; display: block; width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  #s1 h1 {
+    font-family: 'Playfair Display', serif; font-size: clamp(42px, 5vw, 64px);
+    font-weight: 900; line-height: 1.08; margin-bottom: 20px;
+    color: var(--white);
+  }
+  #s1 h1 span { color: var(--accent); }
+  #s1 .subtitle {
+    font-size: 16px; color: #8AAED4; line-height: 1.6;
+    margin-bottom: 36px; max-width: 480px;
+  }
+  #s1 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 44px; }
+  #s1 .logo-row {
+    display: flex; gap: 14px; align-items: center;
+  }
+  #s1 .logo-box {
+    border: 1px dashed rgba(245,166,35,0.4);
+    border-radius: 8px; padding: 8px 20px;
+    font-size: 11px; color: rgba(245,166,35,0.6);
+    font-family: 'DM Mono', monospace; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  #s1 .logo-box:hover {
+    border-color: var(--accent); color: var(--accent);
+    background: rgba(245,166,35,0.06);
+  }
+  #s1 .logo-box input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+  }
+
+  /* ════════════════════════════════════════
+     SLIDE 2 — ABOUT
+  ════════════════════════════════════════ */
+  #s2 { background: #07101E; }
+  #s2 .layout {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0; height: 100%;
+  }
+  #s2 .left {
+    background: linear-gradient(160deg, #0D1F3C, #091428);
+    padding: 56px 48px; display: flex; flex-direction: column; justify-content: center;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  #s2 .right {
+    padding: 48px 48px; display: flex; flex-direction: column;
+    justify-content: center; gap: 18px;
+  }
+  #s2 h2 {
+    font-family: 'Playfair Display', serif; font-size: 42px;
+    font-weight: 700; line-height: 1.15; margin-bottom: 20px;
+  }
+  #s2 .lead {
+    font-size: 15px; color: #8AAED4; line-height: 1.7; margin-bottom: 28px;
+  }
+  #s2 .stat-row { display: flex; gap: 24px; }
+  #s2 .stat { text-align: center; }
+  #s2 .stat-num {
+    font-family: 'Playfair Display', serif; font-size: 36px;
+    font-weight: 900; color: var(--accent); display: block;
+  }
+  #s2 .stat-label {
+    font-size: 11px; color: var(--grey); letter-spacing: 1px;
+    font-family: 'DM Mono', monospace;
+  }
+  #s2 .about-card {
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 18px 20px;
+    background: rgba(255,255,255,0.03);
+    display: flex; gap: 16px; align-items: flex-start;
+    transition: all 0.2s;
+  }
+  #s2 .about-card:hover { border-color: rgba(245,166,35,0.25); background: rgba(245,166,35,0.03); }
+  #s2 .about-card .icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  #s2 .about-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  #s2 .about-card p { font-size: 13px; color: var(--grey); line-height: 1.5; }
+
+  /* ════════════════════════════════════════
+     SLIDE 3 — SCHEDULE OVERVIEW
+  ════════════════════════════════════════ */
+  #s3 { background: #060F1C; padding: 48px 64px; }
+  #s3 .top { margin-bottom: 32px; }
+  #s3 h2 { font-family: 'Playfair Display', serif; font-size: 38px; font-weight: 700; }
+  #s3 .weeks { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  #s3 .week-col { border-radius: 14px; overflow: hidden; }
+  #s3 .week-header {
+    padding: 14px 20px; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px;
+  }
+  #s3 .week-body { padding: 6px 0; }
+  #s3 .day-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s; cursor: default;
+  }
+  #s3 .day-row:last-child { border-bottom: none; }
+  #s3 .day-row:hover { background: rgba(255,255,255,0.03); }
+  #s3 .day-badge {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    font-weight: 500; padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  #s3 .day-title { font-size: 13px; font-weight: 500; }
+  #s3 .day-desc { font-size: 11px; color: var(--grey); }
+  #s3 .w1 .week-header { background: linear-gradient(90deg,#1054A8,#1565C0); }
+  #s3 .w1 .week-body { background: rgba(16,84,168,0.08); border: 1px solid rgba(16,84,168,0.2); border-top: none; border-radius: 0 0 14px 14px; }
+  #s3 .w1 .day-badge { background: rgba(16,84,168,0.3); color: #6EB5FF; }
+  #s3 .w2 .week-header { background: linear-gradient(90deg,#D45500,#E65100); }
+  #s3 .w2 .week-body { background: rgba(212,85,0,0.08); border: 1px solid rgba(212,85,0,0.2); border-top: none; border-radius: 0 0 14px 14px; }
+  #s3 .w2 .day-badge { background: rgba(212,85,0,0.3); color: #FFB366; }
+  #s3 .footer-note {
+    margin-top: 16px; padding: 10px 18px;
+    background: rgba(245,166,35,0.08); border: 1px solid rgba(245,166,35,0.2);
+    border-radius: 8px; font-size: 12px; color: #C8A23A;
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ════════════════════════════════════════
+     SLIDE 4 — WEEK 1 DETAIL
+  ════════════════════════════════════════ */
+  #s4 { background: #060F1C; padding: 48px 64px; }
+  #s4 h2 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 6px; }
+  #s4 .sub { font-size: 13px; color: var(--grey); margin-bottom: 28px; }
+  #s4 .days-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; }
+  #s4 .day-card {
+    background: rgba(16,84,168,0.08); border: 1px solid rgba(16,84,168,0.2);
+    border-radius: 12px; padding: 18px 16px; transition: all 0.2s; cursor: default;
+  }
+  #s4 .day-card:hover { border-color: rgba(41,121,212,0.5); transform: translateY(-3px); background: rgba(16,84,168,0.15); }
+  #s4 .day-num {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: #6EB5FF; letter-spacing: 1px; margin-bottom: 10px;
+    background: rgba(16,84,168,0.3); display: inline-block;
+    padding: 2px 8px; border-radius: 3px;
+  }
+  #s4 .day-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+  #s4 .day-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--white); }
+  #s4 .day-points { list-style: none; }
+  #s4 .day-points li {
+    font-size: 11px; color: var(--grey); line-height: 1.5;
+    padding-left: 12px; position: relative; margin-bottom: 3px;
+  }
+  #s4 .day-points li::before { content: '·'; position: absolute; left: 0; color: #6EB5FF; }
+
+  /* ════════════════════════════════════════
+     SLIDE 5 — WEEK 2 DETAIL
+  ════════════════════════════════════════ */
+  #s5 { background: #0C0A06; padding: 48px 64px; }
+  #s5 h2 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 6px; }
+  #s5 .sub { font-size: 13px; color: var(--grey); margin-bottom: 28px; }
+  #s5 .days-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; }
+  #s5 .day-card {
+    background: rgba(212,85,0,0.07); border: 1px solid rgba(212,85,0,0.2);
+    border-radius: 12px; padding: 18px 16px; transition: all 0.2s; cursor: default;
+  }
+  #s5 .day-card:hover { border-color: rgba(229,115,0,0.5); transform: translateY(-3px); background: rgba(212,85,0,0.15); }
+  #s5 .day-num {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: #FFB366; letter-spacing: 1px; margin-bottom: 10px;
+    background: rgba(212,85,0,0.25); display: inline-block;
+    padding: 2px 8px; border-radius: 3px;
+  }
+  #s5 .day-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+  #s5 .day-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--white); }
+  #s5 .day-points { list-style: none; }
+  #s5 .day-points li {
+    font-size: 11px; color: var(--grey); line-height: 1.5;
+    padding-left: 12px; position: relative; margin-bottom: 3px;
+  }
+  #s5 .day-points li::before { content: '·'; position: absolute; left: 0; color: #FFB366; }
+
+  /* ════════════════════════════════════════
+     SLIDE 6 — MATERIALS LIST
+  ════════════════════════════════════════ */
+  #s6 { background: #06100A; padding: 44px 64px; }
+  #s6 h2 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 6px; }
+  #s6 .sub { font-size: 13px; color: var(--grey); margin-bottom: 28px; }
+  #s6 .mat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  #s6 .mat-category {
+    background: rgba(6,132,75,0.07); border: 1px solid rgba(6,132,75,0.2);
+    border-radius: 12px; padding: 18px 20px;
+  }
+  #s6 .mat-category h4 {
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    color: #52E39A; font-family: 'DM Mono', monospace;
+    text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #s6 .mat-list { list-style: none; }
+  #s6 .mat-list li {
+    font-size: 12px; color: #B0C8B8; padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; align-items: center; gap: 8px;
+  }
+  #s6 .mat-list li:last-child { border-bottom: none; }
+  #s6 .mat-list li::before { content: '✓'; color: #52E39A; font-size: 10px; flex-shrink: 0; }
+  #s6 .note-box {
+    margin-top: 16px; padding: 10px 18px;
+    background: rgba(245,166,35,0.07); border: 1px solid rgba(245,166,35,0.2);
+    border-radius: 8px; font-size: 12px; color: #C8A23A;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ════════════════════════════════════════
+     SLIDE 7 — ADMISSION PROCESS
+  ════════════════════════════════════════ */
+  #s7 { background: #080614; padding: 48px 64px; }
+  #s7 h2 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 6px; }
+  #s7 .sub { font-size: 13px; color: var(--grey); margin-bottom: 32px; }
+  #s7 .steps-row { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 0; align-items: center; margin-bottom: 28px; }
+  #s7 .step {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 20px 16px; text-align: center;
+    transition: all 0.2s;
+  }
+  #s7 .step:hover { border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.04); }
+  #s7 .step-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #E8920A);
+    color: var(--navy); font-weight: 700; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px;
+  }
+  #s7 .step h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  #s7 .step ul { list-style: none; }
+  #s7 .step ul li { font-size: 11px; color: var(--grey); padding: 2px 0; }
+  #s7 .step-arrow {
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.2); font-size: 22px; padding: 0 4px;
+  }
+  #s7 .start-box {
+    background: linear-gradient(135deg, var(--accent), #E8920A);
+    color: var(--navy); border-radius: 12px; padding: 20px 16px;
+    text-align: center; font-weight: 700;
+  }
+  #s7 .start-box .icon { font-size: 28px; margin-bottom: 6px; display: block; }
+  #s7 .start-box p { font-size: 12px; font-weight: 700; }
+  #s7 .outreach {
+    background: rgba(41,121,212,0.08); border: 1px solid rgba(41,121,212,0.2);
+    border-radius: 10px; padding: 14px 20px;
+  }
+  #s7 .outreach h4 { font-size: 11px; color: #6EB5FF; font-family: 'DM Mono', monospace; letter-spacing: 1px; margin-bottom: 10px; }
+  #s7 .outreach-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  #s7 .outreach-tag {
+    background: rgba(41,121,212,0.15); border: 1px solid rgba(41,121,212,0.3);
+    color: #6EB5FF; border-radius: 6px; padding: 4px 12px; font-size: 11px;
+  }
+
+  /* ════════════════════════════════════════
+     SLIDE 8 — DESIGN PRINCIPLES
+  ════════════════════════════════════════ */
+  #s8 { background: #060F1C; padding: 48px 64px; }
+  #s8 h2 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 6px; }
+  #s8 .sub { font-size: 13px; color: var(--grey); margin-bottom: 28px; }
+  #s8 .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  #s8 .p-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 20px 18px;
+    border-left: 3px solid var(--accent); transition: all 0.2s;
+  }
+  #s8 .p-card:hover { background: rgba(245,166,35,0.04); transform: translateY(-2px); }
+  #s8 .p-icon { font-size: 26px; margin-bottom: 10px; display: block; }
+  #s8 .p-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--accent); }
+  #s8 .p-desc { font-size: 12px; color: var(--grey); line-height: 1.6; }
+
+  /* ════════════════════════════════════════
+     SLIDE 9 — CLOSING
+  ════════════════════════════════════════ */
+  #s9 {
+    background: radial-gradient(ellipse at 30% 50%, #0D1F3C, #050E1F);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 48px;
+  }
+  #s9 .medal { font-size: 64px; margin-bottom: 20px; display: block;
+    animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  #s9 h2 {
+    font-family: 'Playfair Display', serif; font-size: clamp(36px,4vw,56px);
+    font-weight: 900; line-height: 1.1; margin-bottom: 16px;
+  }
+  #s9 h2 span { color: var(--accent); }
+  #s9 .tagline { font-size: 16px; color: #8AAED4; margin-bottom: 36px; max-width: 520px; }
+  #s9 .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  #s9 .cta-btn {
+    padding: 12px 28px; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  }
+  #s9 .cta-primary {
+    background: linear-gradient(135deg, var(--accent), #E8920A);
+    color: var(--navy); border: none;
+  }
+  #s9 .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,166,35,0.3); }
+  #s9 .cta-secondary {
+    background: transparent; color: var(--white);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  #s9 .cta-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  #s9 .logo-row { display: flex; gap: 14px; margin-top: 36px; justify-content: center; }
+  #s9 .logo-box {
+    border: 1px dashed rgba(245,166,35,0.3); border-radius: 8px;
+    padding: 8px 22px; font-size: 11px; color: rgba(245,166,35,0.5);
+    font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  #s9 .logo-box:hover { border-color: var(--accent); color: var(--accent); }
+  #s9 .logo-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+  /* ── ANIMATIONS ── */
+  .slide.active .fade-up {
+    animation: fadeUp 0.5s ease forwards;
+  }
+  .slide.active .fade-up:nth-child(1) { animation-delay: 0.05s; }
+  .slide.active .fade-up:nth-child(2) { animation-delay: 0.12s; }
+  .slide.active .fade-up:nth-child(3) { animation-delay: 0.19s; }
+  .slide.active .fade-up:nth-child(4) { animation-delay: 0.26s; }
+  .slide.active .fade-up:nth-child(5) { animation-delay: 0.33s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { opacity: 0; }
+</style>
+</head>
+<body>
+
+<!-- SLIDE COUNTER -->
+<div class="slide-num" id="slideNum">01 / 09</div>
+
+<!-- DECK -->
+<div class="deck" id="deck">
+
+  <!-- ═══ SLIDE 1: TITLE ═══ -->
+  <div class="slide active grid-bg" id="s1">
+    <svg class="circuit-deco" viewBox="0 0 500 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="100" y1="100" x2="400" y2="100" stroke="#2979D4" stroke-width="1.5"/>
+      <line x1="400" y1="100" x2="400" y2="300" stroke="#2979D4" stroke-width="1.5"/>
+      <line x1="100" y1="300" x2="400" y2="300" stroke="#2979D4" stroke-width="1.5"/>
+      <line x1="100" y1="100" x2="100" y2="500" stroke="#2979D4" stroke-width="1.5"/>
+      <line x1="100" y1="500" x2="300" y2="500" stroke="#2979D4" stroke-width="1.5"/>
+      <line x1="200" y1="300" x2="200" y2="400" stroke="#F5A623" stroke-width="1.5"/>
+      <line x1="200" y1="400" x2="350" y2="400" stroke="#F5A623" stroke-width="1.5"/>
+      <rect x="230" y="90" width="70" height="20" fill="none" stroke="#F5A623" stroke-width="1.5" rx="2"/>
+      <circle cx="100" cy="300" r="8" fill="#2979D4"/>
+      <circle cx="400" cy="300" r="8" fill="#F5A623"/>
+      <circle cx="200" cy="400" r="8" fill="#2979D4"/>
+      <circle cx="100" cy="300" r="18" fill="#2979D4" opacity="0.15"/>
+      <circle cx="400" cy="300" r="18" fill="#F5A623" opacity="0.12"/>
+      <line x1="50" y1="200" x2="100" y2="200" stroke="#2979D4" stroke-width="1"/>
+      <line x1="300" y1="100" x2="300" y2="50" stroke="#F5A623" stroke-width="1"/>
+      <line x1="400" y1="400" x2="450" y2="400" stroke="#2979D4" stroke-width="1"/>
+      <circle cx="300" cy="500" r="5" fill="#2979D4" opacity="0.5"/>
+      <line x1="300" y1="500" x2="300" y2="400" stroke="#2979D4" stroke-width="1" opacity="0.5"/>
+    </svg>
+    <div class="accent-bar"></div>
+    <div class="content">
+      <div class="inst-label fade-up">EE LAB · KLE-CTIE · KLE TECHNOLOGICAL UNIVERSITY</div>
+      <h1 class="fade-up">Basic <span>Electrical</span><br>&amp; Electronics<br>Training</h1>
+      <p class="subtitle fade-up">A hands-on programme for non-electronics professionals. Build real skills, safely.</p>
+      <div class="tags fade-up">
+        <span class="tag">⏱ 2 Weeks</span>
+        <span class="tag">📋 10 Sessions</span>
+        <span class="tag blue">🔬 Hands-On</span>
+        <span class="tag green">🏅 Certificate</span>
+        <span class="tag blue">👥 Batch: 6–10</span>
+      </div>
+      <div class="logo-row fade-up">
+        <div class="logo-box" title="Click to upload KLE Logo">
+          <input type="file" accept="image/*" onchange="uploadLogo(this,'kle-logo')" title="Upload KLE Logo">
+          <span id="kle-logo">[ KLE Logo ]</span>
+        </div>
+        <div class="logo-box" title="Click to upload CTIE Logo">
+          <input type="file" accept="image/*" onchange="uploadLogo(this,'ctie-logo')" title="Upload CTIE Logo">
+          <span id="ctie-logo">[ CTIE Logo ]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 2: ABOUT ═══ -->
+  <div class="slide" id="s2">
+    <div class="layout">
+      <div class="left">
+        <div class="section-label fade-up">ABOUT THE PROGRAMME</div>
+        <h2 class="fade-up">What is<br>this about?</h2>
+        <p class="lead fade-up">Designed for professionals with zero electronics background — startup founders, pharma, biotech, mechanical, and management professionals who need practical electrical skills for their work environment.</p>
+        <div class="stat-row fade-up">
+          <div class="stat"><span class="stat-num">10</span><span class="stat-label">SESSIONS</span></div>
+          <div class="stat"><span class="stat-num">2</span><span class="stat-label">WEEKS</span></div>
+          <div class="stat"><span class="stat-num">6–10</span><span class="stat-label">PER BATCH</span></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="about-card fade-up">
+          <div class="icon" style="background:rgba(245,166,35,0.12);">🎯</div>
+          <div>
+            <h4>Who Is It For?</h4>
+            <p>Non-electronics professionals — startup founders, pharma, biotech, mechanical, management, or any domain where basic electrical knowledge adds value.</p>
+          </div>
+        </div>
+        <div class="about-card fade-up">
+          <div class="icon" style="background:rgba(41,121,212,0.12);">⚡</div>
+          <div>
+            <h4>What Will You Learn?</h4>
+            <p>Electrical safety, circuit basics, multimeter use, plug tops & sockets, soldering, fault diagnosis, desoldering & rework, and real-world scenario simulations.</p>
+          </div>
+        </div>
+        <div class="about-card fade-up">
+          <div class="icon" style="background:rgba(6,132,75,0.12);">🏅</div>
+          <div>
+            <h4>What Do You Get?</h4>
+            <p>Hands-on experience with EE Lab inventory, a practical assessment, and a Certificate of Completion from KLE-CTIE upon clearing the threshold score.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 3: SCHEDULE OVERVIEW ═══ -->
+  <div class="slide" id="s3">
+    <div class="top fade-up">
+      <div class="section-label">PROGRAMME SCHEDULE</div>
+      <h2>2 Weeks · 10 Sessions · 1–2 Hours Daily</h2>
+    </div>
+    <div class="weeks fade-up">
+      <div class="week-col w1">
+        <div class="week-header">🔵 WEEK 1 — Foundations &amp; Safety</div>
+        <div class="week-body">
+          <div class="day-row"><span class="day-badge">DAY 1</span><div><div class="day-title">Electrical Safety &amp; Lab Intro</div><div class="day-desc">Rules, PPE, dos &amp; don'ts, lab orientation</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 2</span><div><div class="day-title">Voltage, Current &amp; Resistance</div><div class="day-desc">Core concepts via live demos &amp; experiments</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 3</span><div><div class="day-title">Circuit Diagrams &amp; Components</div><div class="day-desc">Reading schematics, identifying parts</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 4</span><div><div class="day-title">Plug Tops &amp; Sockets</div><div class="day-desc">Inspection, connection checking, safe replacement</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 5</span><div><div class="day-title">Multimeter Usage</div><div class="day-desc">Voltage, current, resistance &amp; continuity</div></div></div>
+        </div>
+      </div>
+      <div class="week-col w2">
+        <div class="week-header">🟠 WEEK 2 — Soldering, Applied &amp; Practical</div>
+        <div class="week-body">
+          <div class="day-row"><span class="day-badge">DAY 6</span><div><div class="day-title">Introduction to Soldering</div><div class="day-desc">Tools, solder wire, flux, safety precautions</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 7</span><div><div class="day-title">Soldering Practice</div><div class="day-desc">Through-hole components, PCB joints, clean technique</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 8</span><div><div class="day-title">Desoldering &amp; Rework</div><div class="day-desc">Fault diagnosis, desoldering wick, rework</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 9</span><div><div class="day-title">Scenario Simulations</div><div class="day-desc">Real-world lab situations &amp; repairs</div></div></div>
+          <div class="day-row"><span class="day-badge">DAY 10</span><div><div class="day-title">Recap, Assessment &amp; Certificate</div><div class="day-desc">Practical test, feedback, certificate presentation</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note fade-up">⏱ Each session: 1–2 hours daily · EE Lab inventory used throughout · Batch size: 6–10 participants</div>
+  </div>
+
+  <!-- ═══ SLIDE 4: WEEK 1 DETAIL ═══ -->
+  <div class="slide" id="s4">
+    <div class="section-label fade-up">WEEK 1 IN DETAIL</div>
+    <h2 class="fade-up">Foundations &amp; Safety</h2>
+    <p class="sub fade-up">Days 1–5 · Building the knowledge base from ground zero</p>
+    <div class="days-grid">
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 1</div>
+        <span class="day-icon">🛡️</span>
+        <div class="day-title">Electrical Safety</div>
+        <ul class="day-points">
+          <li>Safety rules &amp; regulations</li><li>PPE — gloves, goggles</li><li>Dos &amp; don'ts in lab</li><li>Emergency procedures</li><li>Lab equipment orientation</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 2</div>
+        <span class="day-icon">⚡</span>
+        <div class="day-title">V, I &amp; R Concepts</div>
+        <ul class="day-points">
+          <li>What is voltage?</li><li>Current and Ohm's Law</li><li>Resistance &amp; conductors</li><li>Live demo with battery</li><li>Simple circuit experiment</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 3</div>
+        <span class="day-icon">📐</span>
+        <div class="day-title">Circuit Diagrams</div>
+        <ul class="day-points">
+          <li>Reading schematics</li><li>Resistors, capacitors</li><li>LEDs, switches, relays</li><li>Component identification</li><li>Hands-on sorting</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 4</div>
+        <span class="day-icon">🔌</span>
+        <div class="day-title">Plug Tops &amp; Sockets</div>
+        <ul class="day-points">
+          <li>Plug top anatomy</li><li>Live &amp; neutral wiring</li><li>Safe disassembly</li><li>Replacing plug tops</li><li>Socket inspection</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 5</div>
+        <span class="day-icon">🔬</span>
+        <div class="day-title">Multimeter</div>
+        <ul class="day-points">
+          <li>Parts of a multimeter</li><li>Measuring DC/AC voltage</li><li>Measuring current</li><li>Continuity testing</li><li>Resistance measurement</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 5: WEEK 2 DETAIL ═══ -->
+  <div class="slide" id="s5">
+    <div class="section-label fade-up">WEEK 2 IN DETAIL</div>
+    <h2 class="fade-up">Soldering, Applied &amp; Practical</h2>
+    <p class="sub fade-up">Days 6–10 · Hands-on skills, fault-finding, and certification</p>
+    <div class="days-grid">
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 6</div>
+        <span class="day-icon">🔥</span>
+        <div class="day-title">Intro to Soldering</div>
+        <ul class="day-points">
+          <li>Soldering iron types</li><li>Solder wire &amp; flux</li><li>Tip care &amp; tinning</li><li>Heat &amp; burn safety</li><li>First practice joint</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 7</div>
+        <span class="day-icon">🔧</span>
+        <div class="day-title">Soldering Practice</div>
+        <ul class="day-points">
+          <li>Through-hole soldering</li><li>Good vs bad joints</li><li>PCB component fitting</li><li>Cleaning solder joints</li><li>Practice PCB task</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 8</div>
+        <span class="day-icon">🔍</span>
+        <div class="day-title">Desoldering &amp; Rework</div>
+        <ul class="day-points">
+          <li>Desoldering wick</li><li>Solder sucker pump</li><li>Component replacement</li><li>Fault diagnosis on PCB</li><li>Rework practice</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 9</div>
+        <span class="day-icon">🧪</span>
+        <div class="day-title">Scenario Simulations</div>
+        <ul class="day-points">
+          <li>Equipment fault check</li><li>Power supply issues</li><li>Connection diagnosis</li><li>Minor repair scenarios</li><li>Safe shutdown practice</li>
+        </ul>
+      </div>
+      <div class="day-card fade-up">
+        <div class="day-num">DAY 10</div>
+        <span class="day-icon">🏅</span>
+        <div class="day-title">Assessment &amp; Cert</div>
+        <ul class="day-points">
+          <li>Online quiz (20 Qs)</li><li>Practical task review</li><li>Score &gt; 60% → cert</li><li>Feedback session</li><li>Certificate ceremony</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 6: MATERIALS ═══ -->
+  <div class="slide" id="s6">
+    <div class="section-label fade-up">MATERIALS REQUIRED</div>
+    <h2 class="fade-up">Lab Materials &amp; Equipment Checklist</h2>
+    <p class="sub fade-up">All items to be made available in EE Lab before Day 1</p>
+    <div class="mat-grid">
+      <div class="mat-category fade-up">
+        <h4>⚡ Electrical Basics</h4>
+        <ul class="mat-list">
+          <li>Plug tops (2-pin &amp; 3-pin)</li>
+          <li>Extension boards / sockets</li>
+          <li>Assorted wires (red/black/green)</li>
+          <li>Wire strippers</li>
+          <li>Screwdrivers (flat &amp; Phillips)</li>
+          <li>Insulation tape / heat shrink</li>
+          <li>MCB / fuse samples</li>
+        </ul>
+      </div>
+      <div class="mat-category fade-up">
+        <h4>🔬 Measurement Tools</h4>
+        <ul class="mat-list">
+          <li>Digital multimeters (1 per 2 participants)</li>
+          <li>Probes &amp; test leads</li>
+          <li>Battery holders &amp; 9V batteries</li>
+          <li>DC power supply unit</li>
+          <li>Breadboards</li>
+          <li>Jumper wires</li>
+          <li>Resistor kit (various values)</li>
+        </ul>
+      </div>
+      <div class="mat-category fade-up">
+        <h4>🔥 Soldering Station</h4>
+        <ul class="mat-list">
+          <li>Soldering irons (1 per participant)</li>
+          <li>Solder wire (60/40 rosin core)</li>
+          <li>Flux paste / liquid flux</li>
+          <li>Desoldering wick &amp; pump</li>
+          <li>PCB practice boards</li>
+          <li>Through-hole components</li>
+          <li>Tip cleaner / wet sponge</li>
+        </ul>
+      </div>
+      <div class="mat-category fade-up">
+        <h4>🧩 Components</h4>
+        <ul class="mat-list">
+          <li>Resistors (variety pack)</li>
+          <li>Capacitors (electrolytic &amp; ceramic)</li>
+          <li>LEDs (mixed colours)</li>
+          <li>Switches (toggle &amp; push)</li>
+          <li>Relays &amp; transistors</li>
+          <li>Diodes (1N4007)</li>
+          <li>Component storage trays</li>
+        </ul>
+      </div>
+      <div class="mat-category fade-up">
+        <h4>🛡️ Safety &amp; PPE</h4>
+        <ul class="mat-list">
+          <li>Safety goggles (1 per participant)</li>
+          <li>Rubber gloves (insulated)</li>
+          <li>Anti-static wrist straps</li>
+          <li>Fire extinguisher (nearby)</li>
+          <li>First aid kit</li>
+          <li>Fume extractor / ventilation</li>
+          <li>Safety signage</li>
+        </ul>
+      </div>
+      <div class="mat-category fade-up">
+        <h4>📋 Lab &amp; Admin</h4>
+        <ul class="mat-list">
+          <li>Printed reference sheets (Day 1)</li>
+          <li>Lab notebooks / log sheets</li>
+          <li>Projector / display screen</li>
+          <li>Whiteboard &amp; markers</li>
+          <li>Attendance register</li>
+          <li>Assessment answer sheets</li>
+          <li>Certificate print paper (if manual)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note-box fade-up">⚠ All equipment must be inspected &amp; tested before Day 1 · Spare consumables (solder, PCBs, components) recommended at 2× quantity</div>
+  </div>
+
+  <!-- ═══ SLIDE 7: ADMISSION ═══ -->
+  <div class="slide" id="s7">
+    <div class="section-label fade-up">ADMISSION PROCESS</div>
+    <h2 class="fade-up">How to Apply</h2>
+    <p class="sub fade-up">A simple 3-step process from interest to training day</p>
+    <div class="steps-row fade-up">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Google Form</h4>
+        <ul><li>Name &amp; Organisation</li><li>Background / Domain</li><li>Motivation to join</li><li>Daily availability</li><li>Prior exposure (if any)</li></ul>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Screening</h4>
+        <ul><li>Non-EE background check</li><li>CTIE ecosystem link</li><li>Business relevance</li><li>Commitment to attend all</li></ul>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Selection</h4>
+        <ul><li>EE Lab team reviews</li><li>Batch: 6–10 people</li><li>Email notification sent</li><li>Schedule &amp; guidelines shared</li></ul>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="start-box">
+        <span class="icon">🚀</span>
+        <p>BEGIN<br>TRAINING</p>
+      </div>
+    </div>
+    <div class="outreach fade-up">
+      <h4>HOW THE FORM REACHES APPLICANTS</h4>
+      <div class="outreach-tags">
+        <span class="outreach-tag">💬 CTIE WhatsApp Groups</span>
+        <span class="outreach-tag">📧 Email Circulars</span>
+        <span class="outreach-tag">📌 Notice Boards</span>
+        <span class="outreach-tag">📱 Social Media Handles</span>
+        <span class="outreach-tag">🔬 EE Lab – Direct Outreach</span>
+        <span class="outreach-tag">🤝 KLE-CTIE Startup Street Network</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 8: DESIGN PRINCIPLES ═══ -->
+  <div class="slide" id="s8">
+    <div class="section-label fade-up">PROGRAMME DESIGN</div>
+    <h2 class="fade-up">Core Design Principles</h2>
+    <p class="sub fade-up">The philosophy behind how this programme is structured and delivered</p>
+    <div class="principles">
+      <div class="p-card fade-up">
+        <span class="p-icon">🛠️</span>
+        <div class="p-title">Hands-On First</div>
+        <p class="p-desc">Minimal theory — maximum doing. Every session ends with a practical task using real lab equipment.</p>
+      </div>
+      <div class="p-card fade-up">
+        <span class="p-icon">🛡️</span>
+        <div class="p-title">Safety Embedded</div>
+        <p class="p-desc">Safety is not a slide — it is the foundation. Reinforced at the start of every single session throughout the programme.</p>
+      </div>
+      <div class="p-card fade-up">
+        <span class="p-icon">🧩</span>
+        <div class="p-title">No Prior Knowledge</div>
+        <p class="p-desc">Designed from zero — accessible to anyone regardless of educational or professional background.</p>
+      </div>
+      <div class="p-card fade-up">
+        <span class="p-icon">🎯</span>
+        <div class="p-title">Outcome-Focused</div>
+        <p class="p-desc">Competencies are defined upfront. Participants leave with real, usable, and safe electrical skills.</p>
+      </div>
+      <div class="p-card fade-up">
+        <span class="p-icon">👥</span>
+        <div class="p-title">Small Batch: 6–10</div>
+        <p class="p-desc">Intentionally small cohorts to ensure quality lab time, individual mentorship, and hands-on equipment access.</p>
+      </div>
+      <div class="p-card fade-up">
+        <span class="p-icon">🌱</span>
+        <div class="p-title">Ecosystem-Driven</div>
+        <p class="p-desc">Rooted in KLE-CTIE Startup Street — connecting learning directly with real entrepreneurial and operational needs.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIDE 9: CLOSING ═══ -->
+  <div class="slide" id="s9">
+    <span class="medal">🏅</span>
+    <h2 class="fade-up">Build <span>Confidence.</span><br>Build <span>Competence.</span></h2>
+    <p class="tagline fade-up">A two-week hands-on programme that empowers non-electronics professionals with real, practical, and safe electrical skills.</p>
+    <div class="cta-row fade-up">
+      <a class="cta-btn cta-primary" href="#">📋 Apply via Google Form</a>
+      <a class="cta-btn cta-secondary" href="#">📧 Contact EE Lab</a>
+    </div>
+    <div class="logo-row fade-up">
+      <div class="logo-box" title="Upload KLE Logo">
+        <input type="file" accept="image/*" onchange="uploadLogo(this,'kle-logo2')" title="Upload KLE Logo">
+        <span id="kle-logo2">[ KLE Logo ]</span>
+      </div>
+      <div class="logo-box" title="Upload CTIE Logo">
+        <input type="file" accept="image/*" onchange="uploadLogo(this,'ctie-logo2')" title="Upload CTIE Logo">
+        <span id="ctie-logo2">[ CTIE Logo ]</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- NAVIGATION -->
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled>‹</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 9</span>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">›</button>
+</nav>
+
+<!-- SPEAKER NOTES TOGGLE -->
+<button class="notes-toggle" onclick="toggleNotes()">SPEAKER NOTES ↑</button>
+
+<!-- NOTES PANEL -->
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-label">SPEAKER NOTES</div>
+  <div class="notes-text" id="notesText"></div>
+</div>
+
+<script>
+  const TOTAL = 9;
+  let current = 0;
+  let notesOpen = false;
+
+  const notes = [
+    // Slide 1
+    `Welcome participants and introduce yourself. Explain the context — this programme was born out of real demand from non-technical professionals at CTIE Startup Street who need to safely handle basic electrical tasks. Emphasise this is a judgement-free zone — everyone starts from zero. Point to the KLE-CTIE branding and the EE Lab's role. Ask participants to introduce themselves briefly.`,
+    // Slide 2
+    `Reinforce that this is NOT an engineering course. It's a practical safety and skills programme. The 3 key questions (Who, What You Learn, What You Get) should anchor the participant's expectations. Mention that certificates are issued digitally after a threshold score is cleared. Share one or two real examples of why a non-electronics professional might need this — e.g. replacing a faulty plug top, checking a machine connection, or identifying a burnt component.`,
+    // Slide 3
+    `Walk through the two-week structure. Explain why Week 1 is theory-grounded and Week 2 is application-heavy. Soldering is introduced only after basic concepts and safety are solid. Stress that Day 10 is an assessment day — not scary, but a structured reflection of what was learned. Mention that 1–2 hours per day is the commitment and the EE Lab's inventory will be used throughout.`,
+    // Slide 4
+    `For each day in Week 1, briefly explain the learning objective. Day 1 is the most important — safety culture must be instilled from the very first session. Day 2 uses a simple battery-LED circuit as the demo. Day 3 uses physical component sorting. Day 4 is the first full hands-on session where participants disassemble and reassemble plug tops. Day 5 introduces the multimeter — the most used tool in electrical work.`,
+    // Slide 5
+    `Week 2 is where confidence is built. Day 6 and 7 on soldering should be done at a slower pace — ensure every participant makes at least 5–6 clean joints before moving on. Day 8 is rework — arguably the most practically useful skill. Day 9 uses printed scenario cards (included in the Faculty Guide) to simulate real-world faults. Day 10 is the assessment — online quiz + practical demonstration. Certificate threshold: 60% or above.`,
+    // Slide 6
+    `Go through the checklist with the lab assistant (Rakesh or equivalent) before Day 1. Consumables like solder wire and PCB practice boards should be doubled — participants may need extra attempts. Safety equipment is non-negotiable. Multimeters should be pre-tested and batteries should be fresh. Printed reference sheets for Day 1 should be prepared in advance. Fume extractor is mandatory when soldering sessions begin on Day 6.`,
+    // Slide 7
+    `Explain that the Google Form link will be shared through multiple channels. Screening is important — the batch should be people who genuinely have a use case, not just curious observers. Batch size is capped at 10 for lab quality reasons. Once selected, participants receive an automated acknowledgement email with next steps, the schedule, and what to bring on Day 1. This onboarding automation will be handled through Google Apps Script.`,
+    // Slide 8
+    `These six principles guide every design decision in the programme. "Hands-On First" means theory is explained only when it supports a practical task — not as a standalone lecture. "Safety Embedded" means you open AND close every session with a safety reminder. "Small Batch" is a design choice, not a limitation — it enables quality. Invite participants to hold you accountable to these principles throughout the programme.`,
+    // Slide 9
+    `Close with energy. Remind participants of what they will walk away with — not just a certificate, but a genuine change in how they interact with electrical equipment. Invite questions. Share the Google Form QR code or link for applications. Mention the next steps: form opens, shortlisting happens within 3 working days, and the first batch begins within the week of confirmation.`
+  ];
+
+  const slides = document.querySelectorAll('.slide');
+  const dotsContainer = document.getElementById('dots');
+
+  // Build dots
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('button');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsContainer.appendChild(d);
+  }
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current].classList.remove('exit'), 600);
+    current = n;
+    slides[current].classList.add('active');
+    updateUI();
+  }
+
+  function navigate(dir) {
+    const n = current + dir;
+    if (n < 0 || n >= TOTAL) return;
+    goTo(n);
+  }
+
+  function updateUI() {
+    document.getElementById('counter').textContent = `${current + 1} / ${TOTAL}`;
+    document.getElementById('slideNum').textContent = `${String(current + 1).padStart(2,'0')} / ${String(TOTAL).padStart(2,'0')}`;
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === TOTAL - 1;
+    document.querySelectorAll('.nav-dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    document.getElementById('notesText').textContent = notes[current];
+  }
+
+  function toggleNotes() {
+    notesOpen = !notesOpen;
+    document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+    document.querySelector('.notes-toggle').textContent = notesOpen ? 'SPEAKER NOTES ↓' : 'SPEAKER NOTES ↑';
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') navigate(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigate(-1);
+    if (e.key === 'n' || e.key === 'N') toggleNotes();
+    if (e.key === 'Escape') { notesOpen = false; document.getElementById('notesPanel').classList.remove('open'); }
+  });
+
+  // Logo upload
+  function uploadLogo(input, targetId) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const targets = document.querySelectorAll(`#${targetId}`);
+      targets.forEach(t => {
+        t.innerHTML = `<img src="${e.target.result}" style="max-height:36px;max-width:120px;object-fit:contain;vertical-align:middle;" alt="logo">`;
+      });
+      // Sync both slides
+      if (targetId === 'kle-logo') {
+        const t2 = document.getElementById('kle-logo2');
+        if (t2) t2.innerHTML = `<img src="${e.target.result}" style="max-height:36px;max-width:120px;object-fit:contain;vertical-align:middle;" alt="logo">`;
+      }
+      if (targetId === 'ctie-logo') {
+        const t2 = document.getElementById('ctie-logo2');
+        if (t2) t2.innerHTML = `<img src="${e.target.result}" style="max-height:36px;max-width:120px;object-fit:contain;vertical-align:middle;" alt="logo">`;
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Init
+  updateUI();
+</script>
+</body>
+</html>
