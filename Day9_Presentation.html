@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 9 — Scenario Simulations | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#08111F;--navy2:#0D1C30;
+  --indigo:#4338CA;--lindigo:#818CF8;--xindigo:#C7D2FE;
+  --purple:#6D28D9;--lpurple:#A78BFA;
+  --gold:#F5A623;--lgold:#FCD34D;
+  --white:#FFFFFF;--grey:#6B7E96;--lgrey:#C8D4E0;
+  --red:#DC2626;--lred:#FCA5A5;
+  --green:#15803D;--lgreen:#4ADE80;
+  --teal:#0891B2;--lteal:#22D3EE;
+  --flame:#EA580C;--lflame:#FB923C;
+  --amber:#D97706;--lamber:#FCD34D;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#060610;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+.cursor{width:10px;height:10px;background:var(--lindigo);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(129,140,248,.25);}
+
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(67,56,202,.18);color:var(--lindigo);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lindigo);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lindigo);border-color:rgba(67,56,202,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(67,56,202,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(67,56,202,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lindigo);font-style:normal;}
+
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-ind{background:rgba(67,56,202,.15);border:1px solid rgba(67,56,202,.35);color:var(--lindigo);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);color:var(--gold);}
+.tag-red{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);color:var(--lred);}
+.tag-grn{background:rgba(21,128,61,.12);border:1px solid rgba(21,128,61,.3);color:var(--lgreen);}
+.tag-teal{background:rgba(8,145,178,.12);border:1px solid rgba(8,145,178,.3);color:var(--lteal);}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+@keyframes pulse{0%,100%{opacity:.6;}50%{opacity:1;}}
+@keyframes timerWarn{0%,100%{color:var(--lindigo);}50%{color:var(--lred);}}
+
+/* ══ S1 OPENING ══ */
+#s1{background:#060610;}
+#s1 .ga{width:600px;height:600px;top:-200px;right:-150px;background:radial-gradient(circle,rgba(67,56,202,.18),transparent 60%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(109,40,217,.1),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lindigo),var(--indigo),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lindigo);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lindigo);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(46px,6vw,74px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lindigo);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:28px;font-weight:300;}
+#s1 .mission{padding:16px 20px;background:rgba(67,56,202,.08);border:1px solid rgba(67,56,202,.25);border-left:3px solid var(--indigo);border-radius:0 6px 6px 0;max-width:560px;margin-bottom:14px;}
+#s1 .m-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:2px;margin-bottom:5px;}
+#s1 .m-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .rules-row{display:flex;gap:10px;flex-wrap:wrap;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══ S2 HOW STATIONS WORK ══ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(67,56,202,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:44px 44px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lindigo);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:20px;}
+#s2 .rotation{display:flex;flex-direction:column;gap:10px;}
+#s2 .rot-row{display:flex;gap:12px;padding:11px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:7px;align-items:flex-start;}
+#s2 .rr-num{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:rgba(67,56,202,.5);line-height:1;flex-shrink:0;min-width:28px;}
+#s2 .rr-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s2 .rr-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s2 .right{padding:40px 40px;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+/* Station map */
+#s2 .station-map{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#s2 .sm-cell{padding:10px 12px;background:rgba(67,56,202,.08);border:1px solid rgba(67,56,202,.2);border-radius:8px;display:flex;gap:10px;align-items:flex-start;}
+#s2 .sm-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);background:rgba(67,56,202,.15);border-radius:3px;padding:2px 6px;flex-shrink:0;}
+#s2 .sm-name{font-size:12px;font-weight:600;color:var(--white);}
+#s2 .sm-tool{font-size:11px;color:var(--grey);}
+/* Timer widget -->*/
+#s2 .timer-widget{padding:14px 16px;background:rgba(67,56,202,.07);border:1px solid rgba(67,56,202,.2);border-radius:8px;text-align:center;}
+#s2 .tw-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:2px;margin-bottom:8px;}
+#s2 .tw-time{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--lindigo);line-height:1;}
+#s2 .tw-sub{font-size:12px;color:var(--grey);margin-top:4px;margin-bottom:10px;}
+#s2 .tw-btn{padding:8px 20px;background:var(--indigo);color:var(--white);border:none;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}
+#s2 .tw-btn:hover{background:var(--lindigo);color:var(--navy);}
+
+/* ══ STATION SLIDE SHARED ══ */
+.station-slide{background:var(--navy);}
+.station-slide .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 56px;gap:44px;align-items:center;}
+.station-slide .left{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+.station-slide .right{flex:1;display:flex;flex-direction:column;gap:12px;}
+.station-slide h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:8px;}
+.scenario-card{border-radius:12px;padding:20px 18px;display:flex;flex-direction:column;gap:10px;}
+.sc-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;margin-bottom:2px;}
+.sc-scenario{font-size:14px;color:#C8D8E8;line-height:1.7;}
+.tools-card{padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+.tc-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;margin-bottom:8px;}
+.tool-list{display:flex;flex-direction:column;gap:5px;}
+.tool-item{display:flex;gap:8px;font-size:12px;color:#C8D8E8;align-items:center;}
+.ti-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.findings-box{padding:14px 16px;background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);border-radius:8px;}
+.fb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;margin-bottom:8px;}
+.findings-textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:#C8D8E8;resize:none;outline:none;line-height:1.6;}
+.findings-textarea:focus{border-color:var(--lindigo);}
+.findings-textarea::placeholder{color:rgba(255,255,255,.2);}
+.hint-card{padding:12px 14px;border-radius:7px;}
+.hc-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:5px;}
+.hc-text{font-size:12px;color:#C8D8E8;line-height:1.5;}
+.reveal-btn{padding:8px 18px;border:none;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:6px;width:fit-content;}
+.answer-box{display:none;padding:12px 14px;border-radius:7px;margin-top:6px;}
+.answer-box.show{display:block;}
+.ab-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:5px;}
+.ab-text{font-size:12px;color:#C8D8E8;line-height:1.5;}
+
+/* ══ S9 DEBRIEF ══ */
+#s9{background:var(--navy2);}
+#s9 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(67,56,202,.1),transparent 65%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 56px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s9 .sub{font-size:14px;color:var(--grey);margin-bottom:20px;}
+#s9 .debrief-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1;}
+#s9 .db-cell{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px 14px;display:flex;flex-direction:column;gap:8px;}
+#s9 .dbc-station{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;}
+#s9 .dbc-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;}
+#s9 .dbc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;color:#C8D8E8;resize:none;outline:none;height:64px;}
+#s9 .dbc-input:focus{border-color:var(--lindigo);}
+#s9 .dbc-input::placeholder{color:rgba(255,255,255,.18);}
+#s9 .summary-box{margin-top:12px;padding:12px 16px;background:rgba(67,56,202,.07);border:1px solid rgba(67,56,202,.2);border-radius:8px;display:flex;gap:12px;align-items:center;font-size:13px;color:#C8D8E8;}
+
+/* ══ S10 DAY 10 BRIEFING ══ */
+#s10{background:var(--navy);}
+#s10 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(67,56,202,.1),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 56px;gap:48px;align-items:center;}
+#s10 .left{flex:1;}
+#s10 .right{width:380px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s10 h2 em{color:var(--lindigo);font-style:italic;}
+#s10 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s10 .assessment-parts{display:flex;flex-direction:column;gap:10px;}
+#s10 .ap-card{display:flex;gap:14px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;align-items:flex-start;transition:all .2s;}
+#s10 .ap-card:hover{border-color:rgba(129,140,248,.25);}
+#s10 .ap-icon{font-size:24px;flex-shrink:0;margin-top:2px;}
+#s10 .ap-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s10 .ap-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s10 .ap-weight{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;margin-top:3px;}
+#s10 .pass-box{padding:14px 16px;background:rgba(67,56,202,.08);border:1px solid rgba(67,56,202,.22);border-radius:8px;}
+#s10 .pb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;margin-bottom:8px;}
+#s10 .pb-score{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--lindigo);line-height:1;margin-bottom:4px;}
+#s10 .pb-desc{font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s10 .topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+#s10 .topic-chip{padding:6px 10px;background:rgba(67,56,202,.07);border:1px solid rgba(67,56,202,.18);border-radius:5px;font-size:11px;color:#C8D8E8;}
+
+/* ══ S11 CLOSING ══ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1030,#060610);}
+#s11 .ga{width:700px;height:600px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(67,56,202,.15),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(109,40,217,.08),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lindigo),var(--indigo),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:800px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lindigo);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lindigo);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,56px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lindigo);font-style:italic;}
+#s11 .skills-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;}
+#s11 .skill-row{display:flex;align-items:center;gap:10px;font-size:13px;color:#C8D8E8;padding:8px 12px;background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.15);border-radius:6px;}
+#s11 .sk-check{width:18px;height:18px;background:rgba(67,56,202,.2);border:1px solid rgba(67,56,202,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--lindigo);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;margin-bottom:12px;}
+#s11 .tomorrow-box strong{color:var(--lindigo);}
+#s11 .ready-badge{padding:12px 20px;background:linear-gradient(135deg,rgba(67,56,202,.15),rgba(109,40,217,.12));border:1px solid rgba(129,140,248,.25);border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--lindigo);letter-spacing:2px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+<div class="deck" id="deck">
+
+<!-- ══ S1 OPENING ══ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 9 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au"><em>Scenario</em><br>Simulations</h1>
+    <p class="sub au">Six fault stations. Two-person teams. No instructions — only symptoms. This is the dress rehearsal for Day 10.</p>
+    <div class="mission au">
+      <div class="m-label">YOUR MISSION TODAY</div>
+      <div class="m-text">Rotate through six lab stations. At each one you will find a faulty circuit, component, or wiring scenario. Using only your tools, your notebook, and everything learned in Days 1&ndash;8, diagnose the fault and document your findings. You will present your diagnosis to the group in the debrief.</div>
+    </div>
+    <div class="rules-row au">
+      <span class="tag tag-ind">No answers given upfront</span>
+      <span class="tag tag-gold">12 minutes per station</span>
+      <span class="tag tag-grn">Document everything</span>
+      <span class="tag tag-ind">Work in pairs</span>
+    </div>
+  </div>
+  <div class="inst au"><p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p><p>KLE TECHNOLOGICAL UNIVERSITY</p><p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p></div>
+</div>
+
+<!-- ══ S2 HOW STATIONS WORK ══ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-ind">RULES OF ENGAGEMENT</span></div>
+      <h2 class="au">How the<br><span>Stations</span> Work</h2>
+      <p class="intro au">Six stations are set up around the lab. You move through them in order with your partner. The timer on the right counts your time at each station.</p>
+      <div class="rotation">
+        <div class="rot-row au"><div class="rr-num">1</div><div><div class="rr-title">Read the scenario card at the station</div><div class="rr-desc">Each station has a card describing the fault symptom. That is all you know.</div></div></div>
+        <div class="rot-row au"><div class="rr-num">2</div><div><div class="rr-title">Use only the tools provided at that station</div><div class="rr-desc">Multimeter, visual inspection, continuity test — whatever is on the bench. No additional tools.</div></div></div>
+        <div class="rot-row au"><div class="rr-num">3</div><div><div class="rr-title">Document: symptom, test performed, finding, proposed fix</div><div class="rr-desc">Write in your notebook. You will present this in the debrief. Incomplete notes = incomplete diagnosis.</div></div></div>
+        <div class="rot-row au"><div class="rr-num">4</div><div><div class="rr-title">When the timer sounds, rotate to the next station</div><div class="rr-desc">Even if you have not finished. Write your current state and move. Incomplete diagnosis is still data.</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="au"><span class="tag tag-ind">THE SIX STATIONS</span></div>
+      <div class="station-map au">
+        <div class="sm-cell"><span class="sm-num">ST1</span><div><div class="sm-name">Dead LED Circuit</div><div class="sm-tool">Multimeter &middot; Visual</div></div></div>
+        <div class="sm-cell"><span class="sm-num">ST2</span><div><div class="sm-name">Warm Plug Top</div><div class="sm-tool">Visual &middot; Screwdriver</div></div></div>
+        <div class="sm-cell"><span class="sm-num">ST3</span><div><div class="sm-name">Blown Fuse Mystery</div><div class="sm-tool">Multimeter &middot; Continuity</div></div></div>
+        <div class="sm-cell"><span class="sm-num">ST4</span><div><div class="sm-name">Cold Joint Board</div><div class="sm-tool">Visual &middot; Continuity</div></div></div>
+        <div class="sm-cell"><span class="sm-num">ST5</span><div><div class="sm-name">Wrong Resistor</div><div class="sm-tool">Multimeter &middot; Calculation</div></div></div>
+        <div class="sm-cell"><span class="sm-num">ST6</span><div><div class="sm-name">Reversed Component</div><div class="sm-tool">Visual &middot; Reference card</div></div></div>
+      </div>
+      <!-- Station timer -->
+      <div class="timer-widget au">
+        <div class="tw-label">STATION TIMER</div>
+        <div class="tw-time" id="stTimer">12:00</div>
+        <div class="tw-sub" id="stSub">12 minutes per station</div>
+        <button class="tw-btn" id="stBtn" onclick="toggleStTimer()">Start Timer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S3 STATION 1 — DEAD LED ══ -->
+<div class="slide station-slide" id="s3">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(220,38,38,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">STATION 1</span></div>
+      <h2 class="au" style="color:var(--white);">Dead LED<br>Circuit</h2>
+      <div class="scenario-card au" style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);">
+        <div class="sc-label" style="color:var(--lred);">FAULT SCENARIO</div>
+        <div class="sc-scenario">A breadboard circuit with a 9V battery, 470&Omega; resistor, and red LED was working yesterday. Today the LED does not light at all when the battery is connected. The battery has been confirmed working (9.1V). Nothing has been changed on the board.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Digital multimeter</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>9V battery (confirmed good)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Component reference card</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Spare LED (known good)</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">Work systematically from power source to load. Test voltage at battery terminals. Test voltage across the resistor. Test voltage across the LED. Perform continuity test on each wire segment. Test the LED independently with a known-good circuit.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">DOCUMENT YOUR FINDINGS</div>
+        <textarea class="findings-textarea" rows="4" placeholder="Write your diagnosis here&#10;Symptom: LED does not light&#10;Tests performed:&#10;Finding:&#10;Proposed fix:"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(220,38,38,.15);color:var(--lred);border:1px solid rgba(220,38,38,.3);" onclick="revealAnswer('ans1')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans1" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE</div>
+          <div class="ab-text">LED installed backwards (anode and cathode reversed). Current flows through the circuit but the LED blocks it due to reverse polarity. Continuity test: wire segments all pass. LED test independently: LED is functional but lights only in correct orientation. Fix: flip the LED in the breadboard.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S4 STATION 2 — WARM PLUG ══ -->
+<div class="slide station-slide" id="s4">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(234,88,12,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">STATION 2</span></div>
+      <h2 class="au" style="color:var(--white);">Warm<br>Plug Top</h2>
+      <div class="scenario-card au" style="background:rgba(234,88,12,.06);border:1px solid rgba(234,88,12,.2);">
+        <div class="sc-label" style="color:var(--lflame);">FAULT SCENARIO</div>
+        <div class="sc-scenario">A 3-pin plug top from a desk lamp was reported as noticeably warm after 30 minutes of use. The lamp works normally and the fuse has not blown. The plug has been disconnected and is safe to handle and inspect.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Flat-head screwdriver</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Digital multimeter (continuity)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Visual inspection lamp</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Wiring reference diagram</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">Open the plug and inspect visually before any meter testing. Look at terminal screws — are they tight? Is wire insulation touching the terminal or is there bare wire outside the clamp? Check cable grip position. Then use continuity to verify each wire reaches its correct terminal.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">DOCUMENT YOUR FINDINGS</div>
+        <textarea class="findings-textarea" rows="4" placeholder="Write your diagnosis here&#10;Symptom: Plug warm after use&#10;Visual inspection findings:&#10;Meter test results:&#10;Proposed fix:"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(234,88,12,.12);color:var(--lflame);border:1px solid rgba(234,88,12,.3);" onclick="revealAnswer('ans2')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans2" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE</div>
+          <div class="ab-text">Loose terminal screw on the Live connection. The wire makes partial contact but not full metal-to-metal contact. Current passing through the partial contact creates resistance. Resistance generates heat. The plug warms without the fuse blowing because the current is within fuse rating — just not at a clean zero-resistance connection. Fix: open plug, re-strip Live wire, tighten terminal screw firmly.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S5 STATION 3 — BLOWN FUSE ══ -->
+<div class="slide station-slide" id="s5">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">STATION 3</span></div>
+      <h2 class="au" style="color:var(--white);">Blown Fuse<br>Mystery</h2>
+      <div class="scenario-card au" style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);">
+        <div class="sc-label" style="color:var(--lgold);">FAULT SCENARIO</div>
+        <div class="sc-scenario">A plug top with a 3A fuse connected to a desk lamp keeps blowing the fuse every time the lamp is plugged in. The previous user replaced the blown 3A fuse with a 13A fuse &ldquo;to solve the problem&rdquo;. Your task is to diagnose why the 3A fuse was blowing and document whether the 13A replacement is acceptable.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Digital multimeter (resistance mode)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Fuse rating reference chart</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Lamp specification label (on base)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Replacement 3A and 5A fuses</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">Read the lamp wattage from the specification label. Calculate the expected current: I = P &divide; V = Watts &divide; 230. Compare to the fuse rating. Is the lamp drawing more than 3A? If not, why might the fuse still blow? Check the lamp cord for damage. Measure lamp resistance. Calculate whether the 13A replacement is safe.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">DOCUMENT YOUR FINDINGS</div>
+        <textarea class="findings-textarea" rows="4" placeholder="Lamp wattage (from label):&#10;Calculated current (I = P/V):&#10;Expected fuse rating:&#10;Is the 13A replacement acceptable? Why/why not?"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(245,166,35,.1);color:var(--lgold);border:1px solid rgba(245,166,35,.3);" onclick="revealAnswer('ans3')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans3" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE</div>
+          <div class="ab-text">The lamp is rated 700W. I = 700 &divide; 230 = 3.04A. The lamp is right at the limit of a 3A fuse — inrush current at switch-on momentarily exceeds 3A and blows the fuse. Correct fix: replace with a 5A fuse (next standard rating above 3.04A). The 13A replacement is NOT acceptable — it removes protection entirely and allows the cable to overheat before the fuse blows in a real fault.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S6 STATION 4 — COLD JOINT ══ -->
+<div class="slide station-slide" id="s6">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(67,56,202,.12),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-ind">STATION 4</span></div>
+      <h2 class="au" style="color:var(--white);">Cold Joint<br>Board</h2>
+      <div class="scenario-card au" style="background:rgba(67,56,202,.07);border:1px solid rgba(67,56,202,.2);">
+        <div class="sc-label" style="color:var(--lindigo);">FAULT SCENARIO</div>
+        <div class="sc-scenario">A PCB LED indicator circuit works correctly when first powered, but the red LED cuts out intermittently &mdash; sometimes when the board is touched or flexed slightly. The green LED (switch-controlled) always works. The board was assembled by a previous trainee.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Digital multimeter (continuity)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Magnifying glass / loupe</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>9V battery + header</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Circuit diagram of the board</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">Intermittent faults that appear when the board is moved or touched almost always indicate a cold joint. Identify the circuit path that feeds the red LED only. Use continuity mode and probe each joint in that path while gently flexing the board. The joint that causes the continuity beep to drop is your suspect.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">DOCUMENT YOUR FINDINGS</div>
+        <textarea class="findings-textarea" rows="4" placeholder="Intermittent behaviour observed:&#10;Circuit path tested (red LED only):&#10;Suspect joint location:&#10;How confirmed? Proposed fix:"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(67,56,202,.12);color:var(--lindigo);border:1px solid rgba(67,56,202,.3);" onclick="revealAnswer('ans4')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans4" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE</div>
+          <div class="ab-text">Cold joint on one leg of the 470&Omega; resistor in the red LED's current path. The joint looks soldered visually but has no reliable metallic bond — only surface contact. Flexing the board breaks this contact momentarily. Confirmation: continuity probe on resistor-to-pad shows intermittent continuity under flex. Fix: reheat the suspect joint with iron for 2 seconds, allow to reflow and cool without movement.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S7 STATION 5 — WRONG RESISTOR ══ -->
+<div class="slide station-slide" id="s7">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(8,145,178,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-teal">STATION 5</span></div>
+      <h2 class="au" style="color:var(--white);">Wrong<br>Resistor</h2>
+      <div class="scenario-card au" style="background:rgba(8,145,178,.06);border:1px solid rgba(8,145,178,.2);">
+        <div class="sc-label" style="color:var(--lteal);">FAULT SCENARIO</div>
+        <div class="sc-scenario">A 9V LED circuit has been built on a breadboard. The LED lights up but is noticeably dimmer than expected &mdash; barely visible in a lit room. The circuit diagram specifies a 470&Omega; current-limiting resistor. Your task is to identify what resistor is actually in the circuit and calculate what the correct value should be for a normal-brightness red LED.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Digital multimeter (resistance &amp; DCV)</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Resistor colour code reference card</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Calculator or notebook for calculation</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Spare resistors (various values)</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">Read the colour bands on the installed resistor. Then confirm with multimeter resistance measurement (circuit unpowered). Calculate the expected current with Ohm's Law: I = (V &minus; V<sub>f</sub>) &divide; R where V=9V, V<sub>f</sub>(red LED)&asymp;2V. Compare to the normal operating current for a red LED (typically 10&ndash;20mA). Identify the correct replacement resistor value.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">CALCULATE &amp; DOCUMENT</div>
+        <textarea class="findings-textarea" rows="5" placeholder="Installed resistor value (colour code + meter):&#10;Calculated current with installed R:&#10;Expected current with 470Ω:&#10;Correct replacement resistor:&#10;Conclusion:"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(8,145,178,.1);color:var(--lteal);border:1px solid rgba(8,145,178,.3);" onclick="revealAnswer('ans5')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans5" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE &amp; CALCULATION</div>
+          <div class="ab-text">Installed resistor is 10k&Omega; (Brown-Black-Orange). Current = (9&minus;2) &divide; 10,000 = 0.7mA — barely visible. With correct 470&Omega;: I = (9&minus;2) &divide; 470 = 14.9mA — normal brightness. The 10k&Omega; was installed because both it and the 470&Omega; have a Brown band — a common identification error. Fix: remove 10k&Omega;, confirm replacement is Yellow-Violet-Brown (470&Omega;) before inserting.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S8 STATION 6 — REVERSED COMPONENT ══ -->
+<div class="slide station-slide" id="s8">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(109,40,217,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-ind">STATION 6</span></div>
+      <h2 class="au" style="color:var(--white);">Reversed<br>Component</h2>
+      <div class="scenario-card au" style="background:rgba(109,40,217,.07);border:1px solid rgba(109,40,217,.2);">
+        <div class="sc-label" style="color:var(--lpurple);">FAULT SCENARIO</div>
+        <div class="sc-scenario">The Day 7 PCB indicator circuit has been powered and the red LED lights normally. However, the capacitor body is slightly warm to touch after 30 seconds of operation, which is not expected for a 100&micro;F smoothing capacitor in this circuit. The board was assembled by a previous trainee.</div>
+      </div>
+      <div class="tools-card au">
+        <div class="tc-label">TOOLS AT THIS STATION</div>
+        <div class="tool-list">
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Visual inspection lamp</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Capacitor polarity reference card</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Circuit diagram showing C1 polarity</div>
+          <div class="tool-item"><div class="ti-dot" style="background:var(--lindigo);"></div>Desoldering tools (if fix attempted)</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="hint-card au" style="background:rgba(67,56,202,.06);border:1px solid rgba(67,56,202,.18);">
+        <div class="hc-label" style="color:var(--lindigo);">DIAGNOSTIC APPROACH</div>
+        <div class="hc-text">A warm electrolytic capacitor is a strong indicator of reverse polarity — current is flowing through it in the wrong direction, generating heat internally. Disconnect power immediately. Inspect the component visually: confirm the white stripe (negative) orientation matches the PCB marking. Check the circuit diagram for the expected + and &minus; orientation. Document whether the stripe matches or conflicts.</div>
+      </div>
+      <div class="findings-box au">
+        <div class="fb-label">DOCUMENT YOUR FINDINGS</div>
+        <textarea class="findings-textarea" rows="4" placeholder="Capacitor body temperature: warm / hot&#10;White stripe (negative) faces:&#10;PCB silk screen shows negative on:&#10;Match or mismatch? Proposed fix:"></textarea>
+      </div>
+      <div class="au">
+        <button class="reveal-btn" style="background:rgba(109,40,217,.12);color:var(--lpurple);border:1px solid rgba(109,40,217,.3);" onclick="revealAnswer('ans6')">Reveal Answer (after diagnosis)</button>
+        <div class="answer-box" id="ans6" style="background:rgba(21,128,61,.06);border:1px solid rgba(21,128,61,.2);">
+          <div class="ab-label" style="color:var(--lgreen);">ROOT CAUSE</div>
+          <div class="ab-text">Electrolytic capacitor installed backwards — the white stripe (negative) is on the positive pad side. The capacitor is passing reverse current, generating internal heat. Left powered, this would eventually cause the capacitor to bulge, leak, or rupture. Circuit still functions because the capacitor is in a smoothing role — but it is degrading. Fix: desolder and reinstall with correct polarity (white stripe to negative pad, confirmed against silk screen).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S9 DEBRIEF ══ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-ind">DEBRIEF ROUNDTABLE</span></div>
+    <h2 class="au">Findings Presentation</h2>
+    <p class="sub au">Each pair presents their diagnosis for each station. Enter findings below as the group discusses. Disagreements between pairs are the most valuable learning moments.</p>
+    <div class="debrief-grid">
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 1</div>
+        <div class="dbc-name">Dead LED Circuit</div>
+        <textarea class="dbc-input" placeholder="Group finding&#10;Root cause:&#10;Correct fix:"></textarea>
+      </div>
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 2</div>
+        <div class="dbc-name">Warm Plug Top</div>
+        <textarea class="dbc-input" placeholder="Group finding&#10;Root cause:&#10;Correct fix:"></textarea>
+      </div>
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 3</div>
+        <div class="dbc-name">Blown Fuse Mystery</div>
+        <textarea class="dbc-input" placeholder="Group finding&#10;Correct fuse rating:&#10;Is 13A acceptable?"></textarea>
+      </div>
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 4</div>
+        <div class="dbc-name">Cold Joint Board</div>
+        <textarea class="dbc-input" placeholder="Group finding&#10;Joint location:&#10;How confirmed:"></textarea>
+      </div>
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 5</div>
+        <div class="dbc-name">Wrong Resistor</div>
+        <textarea class="dbc-input" placeholder="Installed value:&#10;Correct value:&#10;Calculated current difference:"></textarea>
+      </div>
+      <div class="db-cell au">
+        <div class="dbc-station">STATION 6</div>
+        <div class="dbc-name">Reversed Component</div>
+        <textarea class="dbc-input" placeholder="Component affected:&#10;Polarity error confirmed:&#10;Safe to continue powered?"></textarea>
+      </div>
+    </div>
+    <div class="summary-box au">
+      <span style="font-size:20px;flex-shrink:0;">&#x1F4CB;</span>
+      <span>Stations where all pairs agreed: <strong style="color:#C8D8E8;" id="agreedCount">—</strong> &nbsp;&middot;&nbsp; Any station where pairs disagreed is worth 5 extra minutes of discussion &mdash; disagreement means the fault had genuine diagnostic ambiguity.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S10 DAY 10 BRIEFING ══ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-ind">TOMORROW &mdash; DAY 10</span></div>
+      <h2 class="au">The <em>Assessment</em><br>— What to Expect</h2>
+      <p class="intro au">Day 10 is the final session. The assessment has two parts: a 20-question multiple-choice quiz and a short practical task. You need 60% overall to receive your certificate.</p>
+      <div class="assessment-parts">
+        <div class="ap-card au">
+          <div class="ap-icon">&#x1F4DD;</div>
+          <div>
+            <div class="ap-title">Part 1 — Multiple Choice Quiz</div>
+            <div class="ap-desc">20 questions covering all 9 sessions. 4 marks each. Topics: safety, V/I/R, components, plug tops, multimeter, soldering, desoldering, fault diagnosis.</div>
+            <div class="ap-weight">80 MARKS TOTAL &middot; 48 MARKS TO PASS THIS PART</div>
+          </div>
+        </div>
+        <div class="ap-card au">
+          <div class="ap-icon">&#x1F527;</div>
+          <div>
+            <div class="ap-title">Part 2 — Practical Task</div>
+            <div class="ap-desc">One of: identify a fault on a provided PCB, wire a plug top correctly, or read and measure a component. Instructor-observed. 20 marks.</div>
+            <div class="ap-weight">20 MARKS TOTAL &middot; PASS/FAIL OBSERVED BY INSTRUCTOR</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="pass-box au">
+        <div class="pb-label">PASS THRESHOLD</div>
+        <div class="pb-score">60%</div>
+        <div class="pb-desc">Score 60% or above across both parts to receive your digital Certificate of Completion. Certificate is issued automatically by email on the same day.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lindigo);letter-spacing:1px;margin-bottom:8px;">TOPICS COVERED IN THE QUIZ</div>
+        <div class="topic-grid">
+          <div class="topic-chip">Safety &amp; PPE</div>
+          <div class="topic-chip">Voltage / Current / R</div>
+          <div class="topic-chip">Ohm&rsquo;s Law</div>
+          <div class="topic-chip">Schematics</div>
+          <div class="topic-chip">Plug Wiring</div>
+          <div class="topic-chip">Fuse Selection</div>
+          <div class="topic-chip">Multimeter Use</div>
+          <div class="topic-chip">Soldering Quality</div>
+          <div class="topic-chip">Desoldering</div>
+          <div class="topic-chip">Fault Diagnosis</div>
+        </div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:5px;">WHAT YOU DO NOT NEED TO DO</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">No revision materials required. No memorisation beyond the five safety rules and the three wire colours. The quiz tests what you have been <em style="color:#C8D8E8;font-style:italic;">doing</em> for nine days &mdash; not what you have read.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S11 CLOSING ══ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 9 COMPLETE &nbsp;&middot;&nbsp; 1 SESSION TO GO</div>
+    <h2 class="au">Nine days ago you had<br>never held a soldering iron.<br>Look what you can do <em>now.</em></h2>
+    <div class="skills-grid au">
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Apply the 5 safety rules in any electrical lab</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Explain Voltage, Current, Resistance &amp; Ohm&rsquo;s Law</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Read circuit schematics and identify components</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Wire and inspect a 3-pin plug top correctly</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Use a multimeter for 4 types of measurement</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Produce clean solder joints on a PCB</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Assemble a complete through-hole PCB circuit</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Desolder and rework components cleanly</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Diagnose six types of electrical fault independently</div>
+      <div class="skill-row"><div class="sk-check">&#x2713;</div>Document and present a systematic fault analysis</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 10:</strong> Assessment and Certificate. Arrive on time, bring your notebook. The quiz opens at the session start. There is nothing to prepare tonight that you have not already learned.
+    </div>
+    <div class="ready-badge au">YOU ARE READY &nbsp;&middot;&nbsp; REST WELL &nbsp;&middot;&nbsp; SEE YOU TOMORROW</div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL=11; let cur=0,notesOpen=false;
+let stInterval=null,stSecs=720,stRunning=false;
+
+const NOTES=[
+  `<strong>Set the tone before any slides.</strong> Say: "Today is different. I am not going to teach you anything new. Today you use everything you already know. Six stations around this lab each have a broken or faulty circuit. Your job, in pairs, is to diagnose what is wrong and document your finding. I will not help you during the stations. You have everything you need." <em>Pause. Let the weight of that land. Then: "This is exactly the kind of problem you will face in your own lab or workspace. A piece of equipment stops working. You are the most qualified person in the room. What do you do?" The answer to that question — after nine days — is now different for every person in this room.</em>`,
+
+  `<strong>Walk the room physically before the session starts</strong> and confirm all six stations are set up with the correct scenario cards, tools, and pre-faulted circuits. Station 1: LED reversed on breadboard. Station 2: plug with loose Live terminal screw. Station 3: plug with 13A fuse where 3A belongs, lamp with wattage label visible. Station 4: PCB with deliberate cold joint on one resistor leg. Station 5: breadboard with 10kΩ where 470Ω should be. Station 6: PCB with reversed electrolytic capacitor. <em>The timer widget on this slide is live — click "Start Timer" when each rotation begins. It counts down 12 minutes and turns red at 2 minutes remaining.</em>`,
+
+  `<strong>The reversed LED scenario catches almost every pair by surprise.</strong> The expected diagnosis from beginners is "the LED is faulty" or "the wire is broken" — they jump to replacing the LED rather than testing polarity first. This is exactly the lesson: systematic diagnosis before replacement. <em>Watch which pairs go straight for continuity testing (correct approach) versus which pairs immediately swap components (incorrect approach). In the debrief, ask both pairs to explain their method. The contrast is illuminating.</em>`,
+
+  `<strong>The warm plug station requires participants to actually open and inspect the plug.</strong> Make sure the scenario plug has a visibly loose terminal screw — loose enough that it wobbles when touched, but still making intermittent contact so the lamp works. <em>The key learning from this station is that a fault can exist without the circuit failing. The plug warms but the lamp works. This maps directly to real-world safety — many dangerous electrical faults go undetected because the device continues to function while the fault grows.</em>`,
+
+  `<strong>The fuse calculation station is the most academically rich of the six.</strong> Most pairs will correctly identify the 13A fuse as wrong — but may struggle to articulate exactly why it is dangerous. The answer: the cable rating is typically 3A or 5A. A 13A fuse allows 13A to flow before blowing. But the cable will overheat and potentially catch fire at 6–7A — well below the fuse rating. <em>The inrush current concept (why a 3A fuse blows a 700W lamp) is worth explaining in the debrief. Inrush current at switch-on is typically 5–10× steady-state. A 700W lamp drawing 3.04A steady-state can draw 15–30A for the first few milliseconds.</em>`,
+
+  `<strong>The intermittent cold joint station is the hardest to diagnose in 12 minutes.</strong> Pairs who do not know to flex the board while testing with continuity will likely run out of time without finding the fault. This is intentional — the lesson is that some faults require a specific diagnostic technique, not just standard testing. <em>In the debrief: ask pairs who did not find the fault what they tried. Then demonstrate the flex-while-testing technique. This is a memorable teaching moment precisely because it was missed under time pressure.</em>`,
+
+  `<strong>The resistor calculation station rewards participants who internalized Ohm's Law on Day 2.</strong> Many will correctly read the colour code but struggle to complete the current calculation. Walk through the calculation in the debrief: I = (V − Vf) ÷ R = (9−2) ÷ 10,000 = 0.7mA. Then: I = (9−2) ÷ 470 = 14.9mA. The factor of 21× difference in current is striking — and it explains exactly why one LED is "barely visible" and the other is "normal brightness." <em>This station also reinforces the component identification skill from Day 3 — the 10kΩ and 470Ω resistors look similar. The brown first band fools beginners.</em>`,
+
+  `<strong>The reversed capacitor station is the most safety-critical.</strong> An electrolytic capacitor with reversed polarity in a powered circuit will eventually fail — sometimes dramatically. The warm body after 30 seconds is a real warning sign that participants must recognize as "disconnect power immediately." <em>In the debrief, ask: "What would have happened if you had left this circuit running for an hour?" The answer: the capacitor would have continued to heat, potentially bulging or leaking. This connects directly to the Day 5 capacitor polarity warning.</em>`,
+
+  `<strong>The debrief is the most pedagogically valuable part of Day 9.</strong> Run it as a genuine roundtable — each pair reports their finding for each station. Where pairs disagree, open it to the group. Do not rush to the answer immediately — let the disagreement play out. <em>The most common debrief insight: pairs who went straight to replacing components (instead of testing first) often got the right answer by luck, not by diagnosis. Point this out gently: "You found the fault — but would your method work on a fault you had not seen before?" The goal is to develop diagnostic thinking, not pattern matching.</em>`,
+
+  `<strong>The Day 10 briefing must be calming, not alarming.</strong> The assessment tests exactly what was practised. There are no trick questions, no topics introduced for the first time, no calculation questions beyond Ohm's Law. <em>Address the most common anxiety directly: "What if I forget something during the quiz?" Answer: "The quiz is 20 questions on things you have been doing with your hands for nine days. You cannot forget how to wire a plug — your hands know it now. You cannot forget what Ohm's Law is — you used it today at Station 5. The quiz is just proving what you already know."</em>`,
+
+  `<strong>End Day 9 — and the entire programme's learning content — with warmth and genuine acknowledgement.</strong> Read the skills list aloud. For each one, say: "Remember when we did this? That was you." Then say: "Nine days ago, most of you would not have known which wire in a plug is Live. Tonight, you do. And that is not a small thing." <em>The closing badge — "You are ready. Rest well. See you tomorrow." — should be read with a full stop after each phrase. Let the room sit with it. Tomorrow the work is done.</em>`
+];
+
+const slides=document.querySelectorAll('.slide');
+const dotsEl=document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){const d=document.createElement('button');d.className='dot'+(i===0?' active':'');d.onclick=()=>goTo(i);dotsEl.appendChild(d);}
+function goTo(n){slides[cur].classList.remove('active');slides[cur].classList.add('out');const prev=cur;setTimeout(()=>slides[prev].classList.remove('out'),600);cur=n;slides[cur].classList.add('active');updateUI();}
+function go(dir){const n=cur+dir;if(n>=0&&n<TOTAL)goTo(n);}
+function updateUI(){document.getElementById('slideNum').textContent=(cur+1)+' / '+TOTAL;document.getElementById('topCount').textContent=String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');document.getElementById('prevBtn').disabled=cur===0;document.getElementById('nextBtn').disabled=cur===TOTAL-1;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));document.getElementById('notesBody').innerHTML=NOTES[cur];}
+function toggleNotes(){notesOpen=!notesOpen;document.getElementById('notesPanel').classList.toggle('open',notesOpen);document.getElementById('notesBtn').textContent=notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';}
+
+function revealAnswer(id){
+  const el=document.getElementById(id);
+  if(el) el.classList.toggle('show');
+}
+
+function toggleStTimer(){
+  if(stRunning){
+    clearInterval(stInterval); stRunning=false;
+    document.getElementById('stBtn').textContent='Resume';
+  } else {
+    if(stSecs<=0){stSecs=720;}
+    stRunning=true;
+    document.getElementById('stBtn').textContent='Pause';
+    stInterval=setInterval(()=>{
+      stSecs--;
+      const m=Math.floor(stSecs/60),s=stSecs%60;
+      const el=document.getElementById('stTimer');
+      el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      if(stSecs<=120) el.style.color='var(--lred)';
+      else el.style.color='var(--lindigo)';
+      if(stSecs<=0){
+        clearInterval(stInterval); stRunning=false;
+        el.textContent='TIME UP';
+        document.getElementById('stSub').textContent='Rotate to next station';
+        document.getElementById('stBtn').textContent='Reset';
+        stSecs=720;
+      }
+    },1000);
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}
+});
+const cursorEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.rot-row,.sm-cell,.ap-card,.skill-row,.reveal-btn').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
