@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 4 — Plug Tops & Sockets | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #08111F;
+  --navy2:  #0D1C30;
+  --brick:  #B83232;
+  --red:    #DC2626;
+  --lred:   #F87171;
+  --warm:   #C8462A;
+  --brown:  #92400E;
+  --blue:   #1054A8;
+  --lblue:  #3B82F6;
+  --green:  #15803D;
+  --lgreen: #4ADE80;
+  --gold:   #F5A623;
+  --white:  #FFFFFF;
+  --grey:   #6B7E96;
+  --lgrey:  #C8D4E0;
+  --offwht: #FDF2F2;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#04090F;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+/* ── CURSOR ── */
+.cursor{width:10px;height:10px;background:var(--lred);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(248,113,113,.25);}
+
+/* ── ENGINE ── */
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+/* ── NAV ── */
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(184,50,50,.15);color:var(--lred);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lred);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+/* ── NOTES ── */
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lred);border-color:rgba(184,50,50,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(184,50,50,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(184,50,50,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lred);font-style:normal;}
+
+/* ── SHARED ── */
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-red{background:rgba(184,50,50,.15);border:1px solid rgba(184,50,50,.35);color:var(--lred);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);color:var(--gold);}
+.tag-blue{background:rgba(16,84,168,.2);border:1px solid rgba(59,130,246,.4);color:#7FB5FF;}
+.tag-grn{background:rgba(21,128,61,.12);border:1px solid rgba(21,128,61,.35);color:var(--lgreen);}
+.tag-warn{background:rgba(184,50,50,.12);border:1px solid rgba(184,50,50,.35);color:var(--lred);}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+
+/* ══════════════════════════
+   SLIDE 1 — OPENING
+══════════════════════════ */
+#s1{background:var(--navy);}
+#s1 .ga{width:500px;height:500px;top:-150px;right:-100px;background:radial-gradient(circle,rgba(184,50,50,.2),transparent 65%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lred),var(--brick),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lred);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lred);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,76px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lred);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:32px;font-weight:300;}
+#s1 .safety-frame{padding:16px 20px;background:rgba(184,50,50,.07);border:1px solid rgba(184,50,50,.2);border-left:3px solid var(--brick);border-radius:0 6px 6px 0;max-width:540px;}
+#s1 .sf-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:2px;margin-bottom:6px;}
+#s1 .sf-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══════════════════════════
+   SLIDE 2 — WHY IT MATTERS
+══════════════════════════ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(184,50,50,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:52px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lred);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:24px;}
+#s2 .stat-row{display:flex;gap:24px;margin-bottom:24px;}
+#s2 .stat{text-align:center;}
+#s2 .stat-num{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:700;color:var(--lred);display:block;line-height:1;}
+#s2 .stat-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--grey);letter-spacing:1px;display:block;margin-top:4px;}
+#s2 .right{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;gap:12px;}
+#s2 .reason-card{display:flex;gap:14px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;transition:all .2s;}
+#s2 .reason-card:hover{border-color:rgba(184,50,50,.3);background:rgba(184,50,50,.05);}
+#s2 .rc-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
+#s2 .rc-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s2 .rc-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+
+/* ══════════════════════════
+   SLIDE 3 — ANATOMY
+══════════════════════════ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;left:-80px;background:radial-gradient(circle,rgba(184,50,50,.1),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:48px;align-items:center;}
+#s3 .left{width:400px;flex-shrink:0;}
+#s3 .right{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:8px;}
+#s3 .sub{font-size:14px;color:var(--grey);margin-bottom:0;}
+#s3 .part-row{display:flex;gap:12px;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;align-items:flex-start;transition:all .2s;cursor:pointer;}
+#s3 .part-row:hover{border-color:rgba(248,113,113,.3);background:rgba(184,50,50,.05);}
+#s3 .pr-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+#s3 .pr-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s3 .pr-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+
+/* ══════════════════════════
+   SLIDE 4 — THREE WIRES (HERO)
+══════════════════════════ */
+#s4{background:#0A0808;}
+#s4 .ga{width:700px;height:500px;top:-200px;right:-150px;background:radial-gradient(circle,rgba(184,50,50,.12),transparent 60%);}
+#s4 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 64px;justify-content:center;}
+#s4 .hero-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lred);letter-spacing:4px;margin-bottom:24px;}
+#s4 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);margin-bottom:28px;}
+#s4 .wires{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px;}
+#s4 .wire-card{border-radius:12px;padding:24px 20px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:transform .2s;}
+#s4 .wire-card:hover{transform:translateY(-3px);}
+#s4 .wire-card.live{background:rgba(146,64,14,.12);border:1px solid rgba(146,64,14,.4);}
+#s4 .wire-card.neutral{background:rgba(16,84,168,.1);border:1px solid rgba(16,84,168,.35);}
+#s4 .wire-card.earth{background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.35);}
+#s4 .wire-swatch{width:100%;height:8px;border-radius:4px;}
+#s4 .wire-card.live .wire-swatch{background:#92400E;}
+#s4 .wire-card.neutral .wire-swatch{background:#1054A8;}
+#s4 .wire-card.earth .wire-swatch{background:linear-gradient(90deg,#15803D 50%,#EAB308 50%);}
+#s4 .wire-letter{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;line-height:1;}
+#s4 .wire-card.live .wire-letter{color:#D97706;}
+#s4 .wire-card.neutral .wire-letter{color:#60A5FA;}
+#s4 .wire-card.earth .wire-letter{color:#4ADE80;}
+#s4 .wire-name{font-size:16px;font-weight:700;color:var(--white);}
+#s4 .wire-colour{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:2px;}
+#s4 .wire-card.live .wire-colour{color:#D97706;}
+#s4 .wire-card.neutral .wire-colour{color:#60A5FA;}
+#s4 .wire-card.earth .wire-colour{color:#4ADE80;}
+#s4 .wire-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s4 .wire-danger{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;display:inline-block;margin-top:4px;width:fit-content;}
+#s4 .wire-card.live .wire-danger{background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.4);color:#FCA5A5;}
+#s4 .wire-card.neutral .wire-danger{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93C5FD;}
+#s4 .wire-card.earth .wire-danger{background:rgba(21,128,61,.12);border:1px solid rgba(21,128,61,.3);color:#86EFAC;}
+#s4 .memory-box{padding:14px 20px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;font-size:13px;color:#C8D8E8;display:flex;align-items:center;gap:14px;}
+#s4 .memory-box strong{color:var(--gold);}
+
+/* ══════════════════════════
+   SLIDE 5 — EARTH PIN
+══════════════════════════ */
+#s5{background:var(--navy2);}
+#s5 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(21,128,61,.1),transparent 60%);}
+#s5 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s5 .left{flex:1;}
+#s5 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s5 h2{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s5 h2 em{color:var(--lgreen);font-style:italic;}
+#s5 .story{font-size:14px;color:#C8D8E8;line-height:1.8;margin-bottom:16px;}
+#s5 .timeline{display:flex;flex-direction:column;gap:0;}
+#s5 .tl-step{display:flex;gap:14px;position:relative;padding-bottom:16px;}
+#s5 .tl-step:last-child{padding-bottom:0;}
+#s5 .tl-step::before{content:'';position:absolute;left:13px;top:28px;bottom:0;width:1px;background:rgba(74,222,128,.2);}
+#s5 .tl-step:last-child::before{display:none;}
+#s5 .tl-dot{width:28px;height:28px;background:rgba(21,128,61,.15);border:1px solid rgba(21,128,61,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace;font-size:11px;color:var(--lgreen);}
+#s5 .tl-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s5 .tl-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s5 .why-card{padding:14px 16px;background:rgba(21,128,61,.08);border:1px solid rgba(21,128,61,.2);border-radius:8px;}
+#s5 .wc-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:6px;}
+#s5 .wc-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s5 .without-box{padding:12px 16px;background:rgba(184,50,50,.07);border:1px solid rgba(184,50,50,.2);border-left:3px solid var(--brick);border-radius:0 6px 6px 0;}
+#s5 .wb2-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:5px;}
+#s5 .wb2-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════
+   SLIDE 6 — THE FUSE
+══════════════════════════ */
+#s6{background:var(--navy);}
+#s6 .ga{width:400px;height:400px;bottom:-80px;right:-60px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s6 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s6 .left{flex:1;}
+#s6 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s6 h2{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s6 h2 em{color:var(--gold);font-style:italic;}
+#s6 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s6 .fuse-ratings{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+#s6 .fr-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;}
+#s6 .fr-val{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--gold);min-width:52px;}
+#s6 .fr-use{font-size:12px;color:var(--grey);line-height:1.4;}
+#s6 .rule-box{padding:12px 16px;background:rgba(184,50,50,.07);border:1px solid rgba(184,50,50,.2);border-left:3px solid var(--brick);border-radius:0 6px 6px 0;}
+#s6 .rb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:5px;}
+#s6 .rb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════
+   SLIDE 7 — DISASSEMBLY
+══════════════════════════ */
+#s7{background:radial-gradient(ellipse at 20% 50%,#0D1C30,#08111F);}
+#s7 .ga{width:500px;height:400px;top:-80px;right:-60px;background:radial-gradient(circle,rgba(184,50,50,.1),transparent 60%);}
+#s7 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s7 .left{flex:1;}
+#s7 .right{width:340px;flex-shrink:0;}
+#s7 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s7 h2 span{color:var(--lred);}
+#s7 .safety-pre{padding:12px 16px;background:rgba(184,50,50,.07);border:1px solid rgba(184,50,50,.2);border-left:3px solid var(--brick);border-radius:0 6px 6px 0;margin-bottom:18px;}
+#s7 .sp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:4px;}
+#s7 .sp-text{font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s7 .steps{display:flex;flex-direction:column;gap:10px;}
+#s7 .step{display:flex;gap:14px;align-items:flex-start;}
+#s7 .sn{width:28px;height:28px;background:var(--brick);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+#s7 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s7 .st span{color:var(--lred);font-weight:600;}
+/* Plug cross-section SVG panel */
+#s7 .plug-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+#s7 .plug-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:2px;}
+
+/* ══════════════════════════
+   SLIDE 8 — WIRING
+══════════════════════════ */
+#s8{background:var(--navy2);}
+#s8 .ga{width:500px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(184,50,50,.1),transparent 60%);}
+#s8 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s8 .left{flex:1;}
+#s8 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s8 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s8 h2 span{color:var(--lred);}
+#s8 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s8 .wire-steps{display:flex;flex-direction:column;gap:10px;}
+#s8 .ws-row{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;transition:all .2s;}
+#s8 .ws-row:hover{border-color:rgba(248,113,113,.25);}
+#s8 .ws-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+#s8 .ws-label{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s8 .ws-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s8 .check-box{padding:12px 16px;background:rgba(21,128,61,.08);border:1px solid rgba(21,128,61,.2);border-radius:8px;}
+#s8 .cb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:8px;}
+#s8 .check-list{display:flex;flex-direction:column;gap:5px;}
+#s8 .cl-item{display:flex;gap:8px;font-size:12px;color:#C8D8E8;align-items:center;}
+#s8 .cl-check{color:var(--lgreen);font-size:12px;flex-shrink:0;}
+#s8 .critical-box{padding:12px 16px;background:rgba(184,50,50,.07);border:1px solid rgba(184,50,50,.2);border-left:3px solid var(--brick);border-radius:0 6px 6px 0;}
+#s8 .cr-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:5px;}
+#s8 .cr-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════
+   SLIDE 9 — FAULT SPOTTING
+══════════════════════════ */
+#s9{background:var(--navy);}
+#s9 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(184,50,50,.1),transparent 60%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s9 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s9 .fault-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s9 .fault-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px 16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+#s9 .fault-card.revealed{border-color:rgba(184,50,50,.4);background:rgba(184,50,50,.06);}
+#s9 .fault-card:hover{border-color:rgba(248,113,113,.3);}
+#s9 .fc-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:8px;}
+#s9 .fc-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:6px;}
+#s9 .fc-fault{font-size:12px;color:#FCA5A5;line-height:1.5;margin-bottom:6px;}
+#s9 .fc-risk{font-size:12px;color:var(--grey);line-height:1.5;}
+#s9 .fc-answer{display:none;margin-top:8px;padding:8px 10px;background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.25);border-radius:5px;font-size:11px;color:var(--lgreen);line-height:1.5;}
+#s9 .fault-card.revealed .fc-answer{display:block;}
+#s9 .fc-reveal{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.2);position:absolute;bottom:10px;right:12px;letter-spacing:1px;}
+#s9 .fault-card.revealed .fc-reveal{display:none;}
+
+/* ══════════════════════════
+   SLIDE 10 — SOCKET INSPECTION
+══════════════════════════ */
+#s10{background:var(--navy2);}
+#s10 .ga{width:500px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(184,50,50,.1),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s10 .left{flex:1;}
+#s10 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s10 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s10 .check-items{display:flex;flex-direction:column;gap:10px;}
+#s10 .ci-row{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;transition:all .2s;}
+#s10 .ci-row:hover{border-color:rgba(248,113,113,.25);}
+#s10 .ci-icon{font-size:20px;flex-shrink:0;margin-top:2px;}
+#s10 .ci-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s10 .ci-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s10 .never-box{padding:14px 16px;background:rgba(184,50,50,.08);border:1px solid rgba(184,50,50,.25);border-radius:8px;}
+#s10 .nb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:8px;}
+#s10 .never-list{display:flex;flex-direction:column;gap:5px;}
+#s10 .nl-item{display:flex;gap:8px;font-size:13px;color:#FCA5A5;align-items:flex-start;}
+#s10 .nl-dash{flex-shrink:0;margin-top:2px;}
+#s10 .task-box{padding:12px 16px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;}
+#s10 .tb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px;}
+#s10 .tb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════
+   SLIDE 11 — CLOSING
+══════════════════════════ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1C30,#08111F);}
+#s11 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(184,50,50,.12),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(245,166,35,.07),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lred),var(--brick),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lred);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lred);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,56px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lred);font-style:italic;}
+#s11 .can-do{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+#s11 .cd-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8;}
+#s11 .cd-check{width:20px;height:20px;background:rgba(184,50,50,.15);border:1px solid rgba(184,50,50,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lred);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;}
+#s11 .tomorrow-box strong{color:var(--lred);}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════
+     SLIDE 1 — OPENING
+══════════════════════════ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 4 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au">Plug Tops<br>&amp; <em>Sockets</em></h1>
+    <p class="sub au">Today you will disassemble a 3-pin plug top, identify every wire by colour and function, and safely reassemble it. All work is on de-energised, unplugged components only.</p>
+    <div class="safety-frame au">
+      <div class="sf-label">CRITICAL SAFETY STATEMENT &mdash; READ BEFORE PROCEEDING</div>
+      <div class="sf-text">Every plug top and socket you handle today is <strong>completely disconnected from any power source</strong>. We do not connect anything to live mains at any point in this session. If you see a mains socket on the wall &mdash; you do not touch it. All work is mechanical only.</div>
+    </div>
+  </div>
+  <div class="inst au">
+    <p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p>
+    <p>KLE TECHNOLOGICAL UNIVERSITY</p>
+    <p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 2 — WHY IT MATTERS
+══════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">WHY THIS SESSION EXISTS</span></div>
+      <h2 class="au">Most electrical<br>fires start at<br>the <span>plug.</span></h2>
+      <p class="intro au">Loose connections, incorrect wiring, wrong fuse ratings, and damaged cables are responsible for the majority of electrical incidents in labs and offices. Every one of them is preventable with basic knowledge.</p>
+      <div class="stat-row au">
+        <div class="stat">
+          <span class="stat-num">40%</span>
+          <span class="stat-lbl">OF ELECTRICAL FIRES<br>START AT CONNECTIONS</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">3 min</span>
+          <span class="stat-lbl">TO SAFELY REPLACE<br>A PLUG TOP</span>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="reason-card au">
+        <div class="rc-icon">&#x1F525;</div>
+        <div>
+          <div class="rc-title">Loose terminal screws</div>
+          <div class="rc-desc">A poorly tightened screw creates resistance at the connection. That resistance generates heat. Over time, heat causes arcing — a small electrical fire inside the plug.</div>
+        </div>
+      </div>
+      <div class="reason-card au">
+        <div class="rc-icon">&#x26A0;</div>
+        <div>
+          <div class="rc-title">Wrong fuse rating</div>
+          <div class="rc-desc">A 13A fuse in a lamp circuit designed for 3A will not blow when it should. The cable overheats first. Fitting the correct fuse is the simplest safety act in this entire programme.</div>
+        </div>
+      </div>
+      <div class="reason-card au">
+        <div class="rc-icon">&#x1F9F5;</div>
+        <div>
+          <div class="rc-title">Reversed Live and Neutral</div>
+          <div class="rc-desc">A plug wired with Live and Neutral swapped will still power the device. But the switch in the appliance now disconnects the wrong wire — leaving the device energised even when switched off.</div>
+        </div>
+      </div>
+      <div class="reason-card au">
+        <div class="rc-icon">&#x274C;</div>
+        <div>
+          <div class="rc-title">Missing Earth connection</div>
+          <div class="rc-desc">If the metal casing of an appliance becomes live due to an internal fault, the Earth wire carries that current safely to ground. Without it, the current goes through the person who touches the casing.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 3 — ANATOMY
+══════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">ANATOMY</span></div>
+      <h2 class="au">Every Part<br>of a Plug Top</h2>
+      <p class="sub au">Pick up your plug top. Find each part as it is named.</p>
+      <!-- Plug cross-section SVG -->
+      <svg viewBox="0 0 360 280" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" style="margin-top:16px;" class="au">
+        <!-- Plug body -->
+        <rect x="40" y="20" width="280" height="200" rx="20" fill="rgba(30,40,60,0.8)" stroke="rgba(184,50,50,0.4)" stroke-width="1.5"/>
+        <!-- Earth pin (top, longest) -->
+        <rect x="162" y="5" width="36" height="52" rx="5" fill="rgba(21,128,61,0.3)" stroke="rgba(74,222,128,0.6)" stroke-width="1.5"/>
+        <text x="180" y="36" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4ADE80">E</text>
+        <!-- Live pin (bottom left) -->
+        <rect x="80" y="175" width="30" height="45" rx="5" fill="rgba(146,64,14,0.4)" stroke="rgba(217,119,6,0.7)" stroke-width="1.5"/>
+        <text x="95" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#D97706">L</text>
+        <!-- Neutral pin (bottom right) -->
+        <rect x="250" y="175" width="30" height="45" rx="5" fill="rgba(16,84,168,0.4)" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"/>
+        <text x="265" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#60A5FA">N</text>
+        <!-- Fuse -->
+        <rect x="130" y="110" width="100" height="28" rx="6" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.5)" stroke-width="1.5"/>
+        <text x="180" y="128" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#F5A623">FUSE 3A</text>
+        <!-- Cable grip -->
+        <rect x="140" y="195" width="80" height="18" rx="4" fill="rgba(100,116,139,0.2)" stroke="rgba(100,116,139,0.4)" stroke-width="1"/>
+        <text x="180" y="208" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#6B7E96">CABLE GRIP</text>
+        <!-- Terminal screws -->
+        <circle cx="95"  cy="155" r="8" fill="rgba(100,116,139,0.2)" stroke="rgba(200,212,224,0.4)" stroke-width="1"/>
+        <circle cx="265" cy="155" r="8" fill="rgba(100,116,139,0.2)" stroke="rgba(200,212,224,0.4)" stroke-width="1"/>
+        <circle cx="180" cy="75"  r="8" fill="rgba(100,116,139,0.2)" stroke="rgba(200,212,224,0.4)" stroke-width="1"/>
+        <!-- Annotations -->
+        <line x1="180" y1="57" x2="340" y2="30" stroke="rgba(74,222,128,0.3)" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="342" y="32" font-family="DM Mono,monospace" font-size="8" fill="#4ADE80">Earth terminal</text>
+        <line x1="103" y1="175" x2="30" y2="250" stroke="rgba(217,119,6,0.3)" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="8" y="260" font-family="DM Mono,monospace" font-size="8" fill="#D97706">Live terminal</text>
+        <line x1="258" y1="175" x2="340" y2="250" stroke="rgba(96,165,250,0.3)" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="300" y="262" font-family="DM Mono,monospace" font-size="8" fill="#60A5FA">Neutral terminal</text>
+      </svg>
+    </div>
+    <div class="right">
+      <div class="part-row au" style="border-left:3px solid #4ADE80;">
+        <div class="pr-dot" style="background:#4ADE80;"></div>
+        <div><div class="pr-name">Earth Pin (E)</div><div class="pr-desc">The longest pin. Top-centre position. Green and yellow wire. Longest because it connects first on insertion and disconnects last on removal.</div></div>
+      </div>
+      <div class="part-row au" style="border-left:3px solid #D97706;">
+        <div class="pr-dot" style="background:#D97706;"></div>
+        <div><div class="pr-name">Live Pin (L)</div><div class="pr-desc">Bottom-left. Brown wire. The dangerous one — carries the active 230V supply. The pin you must never touch on a connected plug.</div></div>
+      </div>
+      <div class="part-row au" style="border-left:3px solid #60A5FA;">
+        <div class="pr-dot" style="background:#60A5FA;"></div>
+        <div><div class="pr-name">Neutral Pin (N)</div><div class="pr-desc">Bottom-right. Blue wire. Completes the circuit back to the supply. Theoretically at near-zero voltage but still dangerous — never assumed safe.</div></div>
+      </div>
+      <div class="part-row au" style="border-left:3px solid #F5A623;">
+        <div class="pr-dot" style="background:#F5A623;"></div>
+        <div><div class="pr-name">Fuse</div><div class="pr-desc">Sits in a holder across the Live circuit. Rated 3A or 13A. Blows when current exceeds the safe limit, breaking the circuit before damage occurs.</div></div>
+      </div>
+      <div class="part-row au" style="border-left:3px solid #6B7E96;">
+        <div class="pr-dot" style="background:#6B7E96;"></div>
+        <div><div class="pr-name">Cable Grip</div><div class="pr-desc">The plastic bar that clamps the outer cable sheath. Prevents mechanical force on the cable from being transmitted to the terminal screws.</div></div>
+      </div>
+      <div class="part-row au" style="border-left:3px solid #94A3B8;">
+        <div class="pr-dot" style="background:#94A3B8;"></div>
+        <div><div class="pr-name">Terminal Screws</div><div class="pr-desc">One at each pin. Must be tightened firmly. A loose terminal is the most common cause of plug overheating and electrical fires.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 4 — THREE WIRES (HERO)
+══════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="hero-label au">THE THREE WIRES &nbsp;&middot;&nbsp; MEMORISE THESE COLOURS</div>
+    <h2 class="au">Brown. Blue. Green-Yellow.</h2>
+    <div class="wires">
+      <div class="wire-card live au">
+        <div class="wire-swatch"></div>
+        <div class="wire-letter">L</div>
+        <div class="wire-name">Live</div>
+        <div class="wire-colour">BROWN</div>
+        <div class="wire-desc">Carries the 230V supply from the power station to your appliance. This is the wire that will cause serious injury or death if contacted while energised.</div>
+        <span class="wire-danger">HIGHEST RISK</span>
+      </div>
+      <div class="wire-card neutral au">
+        <div class="wire-swatch"></div>
+        <div class="wire-letter">N</div>
+        <div class="wire-name">Neutral</div>
+        <div class="wire-colour">BLUE</div>
+        <div class="wire-desc">Returns current back to the supply. In theory close to 0V, but in practice it can carry significant voltage during a fault. Never assumed to be safe.</div>
+        <span class="wire-danger">TREAT AS LIVE</span>
+      </div>
+      <div class="wire-card earth au">
+        <div class="wire-swatch"></div>
+        <div class="wire-letter">E</div>
+        <div class="wire-name">Earth</div>
+        <div class="wire-colour">GREEN / YELLOW</div>
+        <div class="wire-desc">Safety wire. Connected to the metal casing of the appliance and to the ground. If the Live wire touches the casing due to a fault, the Earth carries that current safely away.</div>
+        <span class="wire-danger">SAFETY CRITICAL</span>
+      </div>
+    </div>
+    <div class="memory-box au">
+      <span style="font-size:22px;">&#x1F9E0;</span>
+      <span><strong>Memory aid:</strong> &ldquo;Brown is Live &mdash; Brown bread is warm, fire is warm, danger is warm. Blue is Neutral &mdash; blue is cool and calm. Green-Yellow is Earth &mdash; the colours of nature, of the ground beneath us.&rdquo;</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 5 — EARTH PIN
+══════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-grn">ENGINEERING STORY</span></div>
+      <h2 class="au">Why the <em>Earth Pin</em><br>is Longest</h2>
+      <p class="story au">This is not a random design choice. The length difference between the Earth pin and the Live/Neutral pins is a deliberate safety engineering decision that protects millions of people every day.</p>
+      <div class="timeline">
+        <div class="tl-step au">
+          <div class="tl-dot">1</div>
+          <div>
+            <div class="tl-title">Plug is inserted into socket</div>
+            <div class="tl-desc">The Earth pin (longest) enters the socket first. This makes the Earth connection before any power can flow.</div>
+          </div>
+        </div>
+        <div class="tl-step au">
+          <div class="tl-dot">2</div>
+          <div>
+            <div class="tl-title">Earth shutter mechanism releases</div>
+            <div class="tl-desc">In Indian sockets, the Earth pin pushes open the safety shutters that block the Live and Neutral holes, preventing insertion of foreign objects.</div>
+          </div>
+        </div>
+        <div class="tl-step au">
+          <div class="tl-dot">3</div>
+          <div>
+            <div class="tl-title">Live and Neutral connect</div>
+            <div class="tl-desc">Only after Earth is connected do the Live and Neutral pins enter the socket. The appliance is now safely earthed before any current flows.</div>
+          </div>
+        </div>
+        <div class="tl-step au">
+          <div class="tl-dot">4</div>
+          <div>
+            <div class="tl-title">Removal reverses the sequence</div>
+            <div class="tl-desc">Live and Neutral disconnect first. Earth remains connected until last — ensuring the appliance casing stays grounded during the transition.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="why-card au">
+        <div class="wc-label">WHAT THE EARTH WIRE ACTUALLY DOES</div>
+        <div class="wc-text">Imagine the Live wire inside a metal kettle frays and touches the metal body. Without Earth: you pick up the kettle and 230V passes through your body to ground. With Earth: the current flows down the Earth wire, trips the circuit breaker, and the kettle simply stops working. The Earth wire saved your life.</div>
+      </div>
+      <!-- Earth pin SVG comparison -->
+      <svg viewBox="0 0 300 160" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <text x="75" y="16" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.3)" letter-spacing="1">EARTH (LONGEST)</text>
+        <text x="225" y="16" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.3)" letter-spacing="1">LIVE / NEUTRAL</text>
+        <!-- Earth pin -->
+        <rect x="58" y="22" width="34" height="100" rx="6" fill="rgba(21,128,61,0.2)" stroke="rgba(74,222,128,0.6)" stroke-width="1.5"/>
+        <text x="75" y="77" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#4ADE80">E</text>
+        <!-- L/N pins -->
+        <rect x="195" y="42" width="28" height="80" rx="5" fill="rgba(146,64,14,0.25)" stroke="rgba(217,119,6,0.5)" stroke-width="1.5"/>
+        <rect x="237" y="42" width="28" height="80" rx="5" fill="rgba(16,84,168,0.2)" stroke="rgba(96,165,250,0.5)" stroke-width="1.5"/>
+        <text x="209" y="84" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#D97706">L</text>
+        <text x="251" y="84" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#60A5FA">N</text>
+        <!-- Height difference arrows -->
+        <line x1="75" y1="122" x2="75" y2="140" stroke="rgba(74,222,128,0.5)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="225" y1="122" x2="225" y2="130" stroke="rgba(217,119,6,0.3)" stroke-width="1.5"/>
+        <line x1="75" y1="148" x2="225" y2="148" stroke="rgba(255,255,255,.15)" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="150" y="158" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(74,222,128,0.5)">~4mm LONGER</text>
+        <defs><marker id="arr" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" fill="#4ADE80"/></marker></defs>
+      </svg>
+      <div class="without-box au">
+        <div class="wb2-label">WITHOUT EARTH &mdash; THE RISK</div>
+        <div class="wb2-text">An unearthed appliance with an internal fault presents its full mains voltage on the casing. A person touching it completes the circuit to ground through their body. This is how electrocution occurs in domestic settings.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 6 — THE FUSE
+══════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">THE FUSE</span></div>
+      <h2 class="au">The <em>Fuse</em><br>Inside the Plug</h2>
+      <p class="def au">The fuse is a thin wire inside a glass or ceramic cartridge. When current exceeds the rated value, the wire melts and breaks the circuit. It is a sacrificial component — designed to fail so the appliance and wiring do not.</p>
+      <div class="types-label au" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:10px;">COMMON FUSE RATINGS</div>
+      <div class="fuse-ratings au">
+        <div class="fr-row"><span class="fr-val">1A</span><div class="fr-use">Very small loads. Shavers, phone chargers, LED lamps. Rare in standard plug tops.</div></div>
+        <div class="fr-row"><span class="fr-val">3A</span><div class="fr-use">Most lamps, small appliances under 700W. Computers, phone chargers, desk fans. Use this as the default for low-power devices.</div></div>
+        <div class="fr-row"><span class="fr-val">5A</span><div class="fr-use">Medium appliances. Some monitors, small heaters. Used when 3A is too low but 13A is excessive.</div></div>
+        <div class="fr-row"><span class="fr-val">13A</span><div class="fr-use">High-power appliances. Kettles, toasters, irons, washing machines. Max for standard UK/Indian plug tops.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Fuse SVG -->
+      <svg viewBox="0 0 300 100" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <line x1="20" y1="50" x2="60" y2="50" stroke="#C8D4E0" stroke-width="2.5"/>
+        <rect x="60" y="28" width="180" height="44" rx="10" fill="rgba(245,166,35,0.1)" stroke="rgba(245,166,35,0.4)" stroke-width="1.5"/>
+        <!-- Fuse wire -->
+        <line x1="80" y1="50" x2="220" y2="50" stroke="rgba(245,166,35,0.6)" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <circle cx="80"  cy="50" r="5" fill="rgba(245,166,35,0.4)" stroke="rgba(245,166,35,0.6)" stroke-width="1"/>
+        <circle cx="220" cy="50" r="5" fill="rgba(245,166,35,0.4)" stroke="rgba(245,166,35,0.6)" stroke-width="1"/>
+        <text x="150" y="53" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="rgba(245,166,35,0.8)">3 A</text>
+        <line x1="240" y1="50" x2="280" y2="50" stroke="#C8D4E0" stroke-width="2.5"/>
+        <text x="150" y="88" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(245,166,35,0.4)" letter-spacing="1">CERAMIC CARTRIDGE FUSE</text>
+      </svg>
+      <div class="rule-box au">
+        <div class="rb-label">THE GOLDEN RULE</div>
+        <div class="rb-text">If a fuse blows, <strong>find out why before replacing it</strong>. A fuse that blows repeatedly is the circuit telling you something is wrong. Fit a higher-rated fuse to stop it blowing and you remove the only protection the appliance has.</div>
+      </div>
+      <div style="padding:12px 16px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px;">QUICK FORMULA</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Fuse rating &asymp; Power (W) &divide; Voltage (V)<br>A 700W appliance at 230V needs: 700&divide;230 = 3A fuse. Always round up to the next standard size.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 7 — DISASSEMBLY
+══════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">HANDS-ON — DISASSEMBLY</span></div>
+      <h2 class="au">Taking It <span>Apart</span></h2>
+      <div class="safety-pre au">
+        <div class="sp-label">BEFORE YOU TOUCH ANYTHING</div>
+        <div class="sp-text">Confirm your plug top is <strong>completely disconnected</strong>. No cable attached. No socket in reach. Place it flat on the bench. Only then pick up the screwdriver.</div>
+      </div>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Identify the <span>central screw</span> on the face of the plug. This is the main body screw. Use a flat-head screwdriver.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Unscrew the central screw fully. <span>Keep it safe</span> — place it in the component tray. Do not lose it.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Gently separate the two halves of the plug body. The <span>top cover</span> lifts away from the base.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Locate the <span>fuse</span> between the Live terminal and the Live pin. Note its rating. Remove and set aside.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st">Examine the <span>three terminal screws</span>. Each should have a wire connection point. Note which colour wire goes where.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st">Identify the <span>cable grip</span>. Note how it clamps the outer sheath of the cable.</div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="plug-panel">
+        <div class="plug-label">PLUG CROSS-SECTION</div>
+        <svg viewBox="0 0 260 240" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Outer body -->
+          <rect x="20" y="10" width="220" height="180" rx="16" fill="rgba(30,40,60,0.9)" stroke="rgba(184,50,50,0.4)" stroke-width="1.5"/>
+          <!-- Cover line (open) -->
+          <line x1="20" y1="50" x2="240" y2="50" stroke="rgba(184,50,50,0.25)" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="130" y="35" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(184,50,50,0.4)">COVER (REMOVED)</text>
+          <!-- Earth terminal -->
+          <rect x="110" y="58" width="40" height="32" rx="5" fill="rgba(21,128,61,0.2)" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
+          <text x="130" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#4ADE80">E</text>
+          <!-- Live terminal -->
+          <rect x="38" y="118" width="40" height="32" rx="5" fill="rgba(146,64,14,0.3)" stroke="rgba(217,119,6,0.6)" stroke-width="1.5"/>
+          <text x="58" y="138" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#D97706">L</text>
+          <!-- Fuse -->
+          <rect x="88" y="124" width="60" height="20" rx="5" fill="rgba(245,166,35,0.12)" stroke="rgba(245,166,35,0.4)" stroke-width="1.2"/>
+          <text x="118" y="138" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#F5A623">3A</text>
+          <!-- Neutral terminal -->
+          <rect x="182" y="118" width="40" height="32" rx="5" fill="rgba(16,84,168,0.25)" stroke="rgba(96,165,250,0.5)" stroke-width="1.5"/>
+          <text x="202" y="138" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#60A5FA">N</text>
+          <!-- Cable grip -->
+          <rect x="95" y="168" width="70" height="14" rx="3" fill="rgba(100,116,139,0.2)" stroke="rgba(100,116,139,0.4)" stroke-width="1"/>
+          <text x="130" y="179" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="#6B7E96">CABLE GRIP</text>
+          <!-- Pins below body -->
+          <rect x="112" y="190" width="36" height="40" rx="5" fill="rgba(21,128,61,0.2)" stroke="rgba(74,222,128,0.5)" stroke-width="1.5"/>
+          <rect x="45"  y="204" width="28" height="28" rx="4" fill="rgba(146,64,14,0.2)" stroke="rgba(217,119,6,0.4)" stroke-width="1.2"/>
+          <rect x="187" y="204" width="28" height="28" rx="4" fill="rgba(16,84,168,0.2)" stroke="rgba(96,165,250,0.4)" stroke-width="1.2"/>
+          <!-- Central screw -->
+          <circle cx="130" cy="100" r="10" fill="rgba(100,116,139,0.15)" stroke="rgba(200,212,224,0.3)" stroke-width="1"/>
+          <line x1="124" y1="100" x2="136" y2="100" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <line x1="130" y1="94" x2="130" y2="106" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <text x="130" y="112" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(255,255,255,0.2)">SCREW</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 8 — WIRING
+══════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">HANDS-ON — WIRING</span></div>
+      <h2 class="au">Wiring It<br><span>Correctly</span></h2>
+      <p class="intro au">The instructor will wire a plug top at the front first. Watch every step. Then complete your own. Do not proceed past Step 3 until the instructor has checked your wire colours.</p>
+      <div class="wire-steps">
+        <div class="ws-row au"><div class="ws-dot" style="background:#D97706;"></div><div><div class="ws-label">Live (Brown) &rarr; L terminal (bottom-left)</div><div class="ws-desc">Strip 8mm of insulation. Wrap clockwise around screw. Tighten firmly — no bare wire visible outside the terminal.</div></div></div>
+        <div class="ws-row au"><div class="ws-dot" style="background:#60A5FA;"></div><div><div class="ws-label">Neutral (Blue) &rarr; N terminal (bottom-right)</div><div class="ws-desc">Same stripping and tightening procedure. Confirm Blue goes to N — never to L.</div></div></div>
+        <div class="ws-row au"><div class="ws-dot" style="background:#4ADE80;"></div><div><div class="ws-label">Earth (Green/Yellow) &rarr; E terminal (top)</div><div class="ws-desc">Longest wire. Connects to the largest terminal. Tighten firmly. The Earth must never be loose.</div></div></div>
+        <div class="ws-row au"><div class="ws-dot" style="background:#F5A623;"></div><div><div class="ws-label">Fit the fuse</div><div class="ws-desc">Select the correct rating for the appliance. Click the fuse cartridge into its holder between the L terminal and the Live pin.</div></div></div>
+        <div class="ws-row au"><div class="ws-dot" style="background:#6B7E96;"></div><div><div class="ws-label">Secure the cable grip &amp; close</div><div class="ws-desc">Tighten the cable grip screw over the outer sheath. Close the plug body. Tighten the central screw firmly.</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="check-box au">
+        <div class="cb-label">INSTRUCTOR CHECK BEFORE CLOSING</div>
+        <div class="check-list">
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>Brown wire in L terminal only</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>Blue wire in N terminal only</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>Green/Yellow wire in E terminal</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>No bare wire visible outside terminals</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>All terminal screws tightened</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>Correct fuse rating fitted</div>
+          <div class="cl-item"><span class="cl-check">&#x2713;</span>Cable grip tightened over sheath</div>
+        </div>
+      </div>
+      <div class="critical-box au">
+        <div class="cr-label">NEVER DO THIS</div>
+        <div class="cr-text">Never omit the Earth wire. Never swap Live and Neutral. Never use a higher-rated fuse to stop it blowing. Never leave bare wire exposed outside a terminal. These four errors cause fires and fatalities.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 9 — FAULT SPOTTING
+══════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-warn">FAULT SPOTTING EXERCISE</span></div>
+    <h2 class="au">Spot the Danger</h2>
+    <p class="sub au">Each card describes a plug top scenario. Identify the fault and the risk. Click to reveal the answer.</p>
+    <div class="fault-grid">
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 01</div>
+        <div class="fc-title">Warm plug after 1 hour</div>
+        <div class="fc-fault">A plug top feels noticeably warm to the touch after the appliance has been running for one hour. The fuse has not blown.</div>
+        <div class="fc-risk">Risk: Intermittent or progressive fault</div>
+        <div class="fc-answer">Likely cause: Loose terminal screw creating resistance. The resistance generates heat without being high enough to blow the fuse. Unplug immediately. Open and re-tighten all terminal screws.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 02</div>
+        <div class="fc-title">Fuse blows on every connection</div>
+        <div class="fc-fault">A 3A fuse in a desk lamp blows every time the lamp is switched on. Someone suggests replacing it with a 13A fuse to solve the problem.</div>
+        <div class="fc-risk">Risk: Masking a real fault</div>
+        <div class="fc-answer">Never do this. The fuse is blowing because the current exceeds 3A — this is a fault in the lamp or wiring. Fitting a 13A fuse removes the protection and allows the fault to persist. Diagnose the lamp first.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 03</div>
+        <div class="fc-title">Brown wire at N terminal</div>
+        <div class="fc-fault">During inspection, you find a plug with the Brown wire connected to the N terminal and the Blue wire connected to the L terminal.</div>
+        <div class="fc-risk">Risk: Reversed polarity</div>
+        <div class="fc-answer">This is a wiring error — Live and Neutral are reversed. The appliance may work normally BUT the switch in the device now disconnects the Neutral, leaving the Live wire permanently connected to the appliance internals even when switched off.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 04</div>
+        <div class="fc-title">No Earth wire connected</div>
+        <div class="fc-fault">You open a plug top and find only two wires — Brown (L) and Blue (N). The E terminal is empty. The appliance is a metal-bodied drill.</div>
+        <div class="fc-risk">Risk: Lethal if internal fault occurs</div>
+        <div class="fc-answer">Metal-bodied power tools must be earthed. Without the Earth wire, any internal fault that puts voltage on the metal body will go through the user to ground. Replace the cable with a 3-core cable and connect the Earth before any use.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 05</div>
+        <div class="fc-title">Bare copper visible at terminal</div>
+        <div class="fc-fault">After wiring, a small length of bare copper conductor is visible outside the terminal screw clamp on the Live wire.</div>
+        <div class="fc-risk">Risk: Contact with live conductor</div>
+        <div class="fc-answer">Any bare conductor outside the terminal is a shock hazard. When the plug closes, the bare wire could contact the plug body or another terminal. Strip only 8mm of insulation. If too much is stripped, re-strip from a point further back on the cable.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+      <div class="fault-card au" onclick="revealFault(this)">
+        <div class="fc-num">SCENARIO 06</div>
+        <div class="fc-title">Cable grip over wire insulation</div>
+        <div class="fc-fault">The cable grip screw is tightened over the individual wire insulation rather than the outer cable sheath. The outer sheath ends before the grip.</div>
+        <div class="fc-risk">Risk: Mechanical stress on terminals</div>
+        <div class="fc-answer">The cable grip must clamp the outer sheath — the tough outer jacket of the cable. If it clamps individual wires, any pull on the cable is transmitted directly to the terminal screws, which will loosen over time and cause the plug to overheat.</div>
+        <div class="fc-reveal">CLICK TO REVEAL</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 10 — SOCKET INSPECTION
+══════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">SOCKET INSPECTION</span></div>
+      <h2 class="au">Checking<br>Sockets &amp;<br>Extension Boards</h2>
+      <p class="intro au">Plug tops are only half the connection. The socket or extension board matters equally. These are the visual checks you can perform safely without any tools.</p>
+      <div class="check-items">
+        <div class="ci-row au"><div class="ci-icon">&#x1F441;</div><div><div class="ci-title">Discolouration or scorch marks</div><div class="ci-desc">Brown or black marks around a socket face indicate arcing. Remove from service immediately — do not use.</div></div></div>
+        <div class="ci-row au"><div class="ci-icon">&#x1F91A;</div><div><div class="ci-title">Mechanical looseness</div><div class="ci-desc">A socket that moves, wobbles, or feels loose in the wall should be flagged for repair. A loose socket can arc intermittently without showing visible signs.</div></div></div>
+        <div class="ci-row au"><div class="ci-icon">&#x1F525;</div><div><div class="ci-title">Warm face plate</div><div class="ci-desc">A socket face plate that feels warm to touch even with nothing plugged in indicates a wiring fault behind the plate. Do not use — report immediately.</div></div></div>
+        <div class="ci-row au"><div class="ci-icon">&#x1F50C;</div><div><div class="ci-title">Extension board overloading</div><div class="ci-desc">Never connect high-power appliances (kettles, heaters, air conditioners) to standard extension boards. Check the total wattage of all connected devices against the board rating.</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="never-box au">
+        <div class="nb-label">NEVER DO THESE</div>
+        <div class="never-list">
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Daisy-chain extension boards (plug one into another)</div>
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Use a socket with visible scorch marks</div>
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Overload a single socket with multiple high-power devices</div>
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Use a damaged or cracked socket face plate</div>
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Block ventilation around extension boards</div>
+          <div class="nl-item"><span class="nl-dash">&#x2014;</span>Run extension leads under carpets or through doorways</div>
+        </div>
+      </div>
+      <div class="task-box au">
+        <div class="tb-label">LAB TASK &mdash; NOW</div>
+        <div class="tb-text">Walk to the extension board nearest your bench. Perform a visual inspection using today's checklist. Note any concerns in your lab notebook. Report anything unusual to the instructor before leaving the lab today.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 11 — CLOSING
+══════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 4 COMPLETE &nbsp;&middot;&nbsp; 6 SESSIONS TO GO</div>
+    <h2 class="au">You just handled<br>the thing that causes<br>most <em>electrical fires</em> &mdash;<br>and now you know why.</h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Name all three wires by colour, terminal, and function</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Safely disassemble and reassemble a 3-pin plug top</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Select the correct fuse rating for a given appliance</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Identify six common plug and socket faults</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 5:</strong> The multimeter. You will use it to measure the voltage across a live battery, test continuity on a wire, and measure the resistance of the plug top you wired today &mdash; to verify your connections are correct.
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL = 11;
+let cur = 0, notesOpen = false;
+
+const NOTES = [
+  `<strong>Read the safety statement aloud before advancing past this slide.</strong> Do not skip it. Say: "Before we touch anything today, I want to be completely clear — every plug top and socket in this lab today is 100% disconnected from any power source. There is no live mains anywhere in this session. What we are doing is entirely mechanical — like taking apart a pen." <em>This framing — comparing it to something familiar and unthreatening — removes apprehension without dismissing the importance of the rules. The recap question from Day 3: "What resistor would you choose for a 1W LED at 9V?" Answer: R = (9-2)/0.02 = 350Ω → use 470Ω. Use the first 3 minutes on this before showing the slide content.</em>`,
+
+  `<strong>The statistics land hardest when you make them personal.</strong> After showing the 40% figure, ask: "Has anyone in this room had a plug overheat, seen a scorch mark on a socket, or had a fuse blow unexpectedly?" In most rooms of 6–10 professionals, at least two people will raise their hand. That lived experience anchors the entire session. <em>The reversed polarity card is worth spending extra time on — most participants are shocked (no pun intended) that a device can appear to work normally while being dangerously miswired. This is the card that makes people go home and check their own plugs.</em>`,
+
+  `<strong>Make this physical immediately.</strong> Before advancing to this slide, place the open plug top on each person's bench — face down, showing the internal layout. As you name each part, ask participants to touch or point to it on their actual plug top. The Earth pin, the fuse holder, the cable grip. "Can everyone find the cable grip? It is the plastic bar near where the cable would enter." <em>The annotation arrows on the SVG cross-section on this slide serve as a reference — but the physical object in their hands is the primary teaching tool.</em>`,
+
+  `<strong>The memory aid on this slide is the most important thing to communicate.</strong> Write it on the whiteboard: BROWN = LIVE. BLUE = NEUTRAL. GREEN/YELLOW = EARTH. Ask participants to write it in their notebooks. Then cover it and ask three people to recall it. Repetition of this specific information is critical — it will be tested on Day 10 and it is genuinely life-important. <em>Optional demonstration if available: hold up a length of flex cable with the outer sheath stripped back to reveal the three colour-coded wires. The visual of seeing actual brown, blue, and green/yellow wires is more memorable than any slide.</em>`,
+
+  `<strong>The Earth pin story is one of the best engineering safety stories in this programme.</strong> Tell it as a story, not a lecture. "In 1947, British Standard engineers were designing the plug we still use today. They asked: what is the single most dangerous moment in connecting an appliance? Answer: the moment Live connects before Earth." Then walk through the four timeline steps. <em>The kettle example on this slide is powerful. Ask: "How many of you have a metal-bodied kettle at home?" Most will raise their hand. "The Earth wire in that plug is the only thing standing between a faulty heating element and a person touching the kettle. Every morning." Let that land.</em>`,
+
+  `<strong>The fuse calculation is immediately applicable.</strong> Write the formula on the whiteboard: I = P ÷ V. "A 1000W microwave at 230V: 1000 ÷ 230 = 4.3A. So you use a 5A fuse." Do three examples together. Then give participants three appliances and ask them to calculate the correct fuse rating: a 60W lamp (3A), a 2kW kettle (13A), a 500W computer monitor (5A). <em>The golden rule about investigating before replacing is the most practically important message on this slide. Share a real incident if you have one — or use this: "In 2019, a laboratory fire in Bengaluru was traced to a 13A fuse in a lamp circuit. Someone replaced the blown 3A fuse with what was available. The lamp wiring overheated and ignited."</em>`,
+
+  `<strong>Demonstrate the disassembly yourself first — slowly, narrating every step.</strong> Use a plug top at the front and a screwdriver. "Step 1: I am locating the central screw. I am using a flat-head. I am unscrewing it fully — notice I am supporting the plug so it does not slip." Complete the full disassembly, then say: "Now you do exactly what I just did. I will come around and check each person's work." <em>Common errors to watch for: forcing the plug body apart before the screw is fully removed (it strips the thread), losing the central screw (have a spare), not recognising the fuse (some participants have never seen one in a plug). Give each person a labelled diagram card to keep on their bench during the task.</em>`,
+
+  `<strong>This is the most safety-critical hands-on task in Week 1.</strong> Check every single person's wiring before they close the plug. Every one. No exceptions. Use the checklist on the right side of this slide as your inspection protocol. Announce this before they start: "I will check each plug before you close it. Do not close yours until I have come to your bench." <em>If someone has wired L and N incorrectly: stop the group, show the error (without embarrassing the individual), explain the consequence, and demonstrate the correct wiring. This moment of learning from a real mistake is worth more than twenty slides.</em>`,
+
+  `<strong>Run the fault-spotting as a group activity, not individual reading.</strong> Read Scenario 1 aloud. Ask: "What is wrong and what is the risk?" Let participants discuss for 60 seconds. Then click to reveal. Repeat for each card. <em>Scenario 3 (reversed polarity) is consistently the most surprising — participants genuinely do not expect a device to work while being dangerously miswired. Use it to make the point: "Your senses alone cannot tell you if a circuit is safe. That is why we have test equipment — and that is exactly what Day 5 is about."</em>`,
+
+  `<strong>The socket inspection walk-around should happen at the end of the session, not just be talked about.</strong> If time allows (10 minutes), send participants around the lab to inspect three different sockets or extension boards and write their observations. Then debrief: "Did anyone find anything concerning?" This builds the habit of visual inspection that will prevent real incidents. <em>The daisy-chaining prohibition is worth emphasising — it is one of the most common unsafe practices in small offices and labs. Many participants will recognise it from their own workplace. Ask: "Does anyone have daisy-chained extension boards in their office?" Use the honesty to reinforce the rule without judgement.</em>`,
+
+  `<strong>The closing line should be said facing the room, not reading the slide.</strong> "You can now wire a plug top correctly. That is a skill most adults in this country do not have. And you now know what to look for when something looks wrong. That knowledge will prevent a fire or an injury at some point in your life. That is not an exaggeration." <em>Day 5 preview is exciting — tell participants that tomorrow they will use the multimeter to test the plug top they wired today, to verify their own connections are correct. This creates a direct continuity between Day 4 and Day 5 that reinforces both sessions.</em>`
+];
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'dot'+(i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  const prev = cur;
+  setTimeout(() => slides[prev].classList.remove('out'), 600);
+  cur = n;
+  slides[cur].classList.add('active');
+  updateUI();
+}
+function go(dir) { const n = cur+dir; if(n>=0&&n<TOTAL) goTo(n); }
+function updateUI() {
+  document.getElementById('slideNum').textContent = (cur+1)+' / '+TOTAL;
+  document.getElementById('topCount').textContent = String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('prevBtn').disabled = cur===0;
+  document.getElementById('nextBtn').disabled = cur===TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  document.getElementById('notesBody').innerHTML = NOTES[cur];
+}
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open',notesOpen);
+  document.getElementById('notesBtn').textContent = notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';
+}
+function revealFault(card) { card.classList.toggle('revealed'); }
+
+document.addEventListener('keydown', e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}
+});
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.reason-card,.part-row,.wire-card,.fr-row,.ws-row,.ci-row,.fault-card,.tl-step').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
