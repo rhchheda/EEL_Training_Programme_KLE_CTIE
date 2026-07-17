@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 2 — Voltage, Current & Resistance | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #08111F;
+  --navy2:  #0D1C30;
+  --blue:   #1054A8;
+  --lblue:  #2779D4;
+  --teal:   #0891B2;
+  --lteal:  #22D3EE;
+  --gold:   #F5A623;
+  --lgold:  #FFD166;
+  --white:  #FFFFFF;
+  --grey:   #6B7E96;
+  --lgrey:  #C8D4E0;
+  --red:    #C8352B;
+  --green:  #0A7040;
+  --amber:  #D45500;
+  --yellow: #EAB308;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #04090F;
+  overflow: hidden;
+  height: 100vh; width: 100vw;
+  cursor: none;
+}
+
+/* ── CURSOR ── */
+.cursor {
+  width: 10px; height: 10px; background: var(--lteal);
+  border-radius: 50%; position: fixed; pointer-events: none;
+  z-index: 9999; transform: translate(-50%,-50%);
+  transition: width .2s, height .2s; mix-blend-mode: difference;
+}
+.cursor.big { width: 32px; height: 32px; background: rgba(34,211,238,.25); }
+
+/* ── SLIDE ENGINE ── */
+.deck { position: relative; width: 100vw; height: 100vh; }
+.slide {
+  position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  transform: translateY(22px);
+  transition: opacity .55s cubic-bezier(.4,0,.2,1), transform .55s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+.slide.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+.slide.out    { opacity: 0; transform: translateY(-22px); }
+
+/* ── NAV ── */
+.nav {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(8,17,31,.9); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.08); border-radius: 50px;
+  padding: 8px 18px; z-index: 1000;
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+}
+.nav-btn {
+  background: none; border: none; color: var(--grey);
+  cursor: pointer; font-size: 18px; width: 32px; height: 32px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.nav-btn:hover { background: rgba(8,145,178,.15); color: var(--lteal); }
+.nav-btn:disabled { opacity: .25; cursor: default; }
+.nav-dots { display: flex; gap: 5px; align-items: center; }
+.dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,.18); border: none;
+  cursor: pointer; transition: all .2s; padding: 0;
+}
+.dot.active { background: var(--lteal); width: 18px; border-radius: 3px; }
+.slide-num {
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--grey); letter-spacing: 1px; min-width: 42px; text-align: center;
+}
+.top-count {
+  position: fixed; top: 22px; right: 28px;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: rgba(255,255,255,.2); z-index: 999; letter-spacing: 1px;
+}
+
+/* ── NOTES ── */
+.notes-btn {
+  position: fixed; bottom: 28px; right: 28px;
+  background: rgba(8,17,31,.9); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.08); border-radius: 8px;
+  padding: 7px 14px; cursor: pointer; color: var(--grey);
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 2px; z-index: 1000; transition: all .2s;
+}
+.notes-btn:hover { color: var(--lteal); border-color: rgba(8,145,178,.3); }
+.notes-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(4,9,15,.97); backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(8,145,178,.25);
+  padding: 20px 48px 88px; max-height: 40vh; overflow-y: auto;
+  z-index: 999; transform: translateY(100%);
+  transition: transform .38s cubic-bezier(.4,0,.2,1);
+}
+.notes-panel.open { transform: translateY(0); }
+.notes-tag {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: var(--lteal); letter-spacing: 3px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.notes-tag::after { content: ''; flex: 1; height: 1px; background: rgba(8,145,178,.2); }
+.notes-body { font-size: 13px; color: #8AAED4; line-height: 1.8; max-width: 900px; }
+.notes-body strong { color: #C8D8E8; }
+.notes-body em { color: var(--lteal); font-style: normal; }
+
+/* ── SHARED ── */
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 3px;
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.tag-teal  { background: rgba(8,145,178,.15); border: 1px solid rgba(8,145,178,.35); color: var(--lteal); }
+.tag-gold  { background: rgba(245,166,35,.15); border: 1px solid rgba(245,166,35,.35); color: var(--gold); }
+.tag-blue  { background: rgba(16,84,168,.2);  border: 1px solid rgba(39,121,212,.4);  color: #7FB5FF; }
+.tag-red   { background: rgba(200,53,43,.12); border: 1px solid rgba(200,53,43,.35);  color: #FF8A83; }
+.tag-grn   { background: rgba(10,112,64,.12); border: 1px solid rgba(10,112,64,.35);  color: #52C98A; }
+
+.glow { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.slide.active .au { animation: fadeUp .5s ease forwards; }
+.slide.active .au:nth-child(1) { animation-delay:.05s; }
+.slide.active .au:nth-child(2) { animation-delay:.12s; }
+.slide.active .au:nth-child(3) { animation-delay:.19s; }
+.slide.active .au:nth-child(4) { animation-delay:.26s; }
+.slide.active .au:nth-child(5) { animation-delay:.33s; }
+.slide.active .au:nth-child(6) { animation-delay:.40s; }
+.au { opacity: 0; }
+
+@keyframes ledGlow {
+  0%,100% { box-shadow: 0 0 12px 4px rgba(255,200,0,.5), 0 0 40px 10px rgba(255,180,0,.2); }
+  50%      { box-shadow: 0 0 20px 8px rgba(255,220,0,.8), 0 0 60px 20px rgba(255,200,0,.35); }
+}
+@keyframes traceFlow {
+  from { stroke-dashoffset: 300; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes pulse {
+  0%,100% { opacity:.6; transform: scale(1); }
+  50%      { opacity:1;  transform: scale(1.04); }
+}
+
+/* ══════════════════════════════════
+   SLIDE 1 — OPENING / RECAP
+══════════════════════════════════ */
+#s1 { background: var(--navy); }
+#s1 .ga { width:500px;height:500px;top:-150px;right:-100px; background:radial-gradient(circle,rgba(8,145,178,.2),transparent 65%); }
+#s1 .gb { width:300px;height:300px;bottom:-80px;left:60px;  background:radial-gradient(circle,rgba(245,166,35,.1),transparent 65%); }
+#s1 .accent { position:absolute;left:0;top:0;bottom:0;width:5px; background:linear-gradient(180deg,var(--lteal),var(--blue),transparent); }
+#s1 .content { position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px; }
+#s1 .day-label { font-family:'DM Mono',monospace;font-size:11px;color:var(--lteal);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px; }
+#s1 .day-label::before { content:'';display:block;width:32px;height:1px;background:var(--lteal); }
+#s1 h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(50px,6vw,78px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px; }
+#s1 h1 em { color:var(--lteal);font-style:italic; }
+#s1 .sub { font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:36px;font-weight:300; }
+#s1 .recap { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px; }
+#s1 .safety-reminder { padding:14px 20px;background:rgba(200,53,43,.07);border:1px solid rgba(200,53,43,.2);border-left:3px solid var(--red);border-radius:0 6px 6px 0;font-size:13px;color:#C8D8E8;max-width:520px; }
+#s1 .safety-reminder strong { color:#FF8A83; }
+#s1 .inst { position:absolute;bottom:36px;right:56px;z-index:2;text-align:right; }
+#s1 .inst p { font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9; }
+
+/* ══════════════════════════════════
+   SLIDE 2 — WATER ANALOGY
+══════════════════════════════════ */
+#s2 { background: var(--navy2); }
+#s2 .ga { width:600px;height:400px;top:-80px;right:-120px; background:radial-gradient(ellipse,rgba(8,145,178,.1),transparent 65%); }
+#s2 .layout { display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2; }
+#s2 .left { padding:52px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05); }
+#s2 h2 { font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px; }
+#s2 h2 span { color:var(--lteal); }
+#s2 .intro { font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:28px; }
+#s2 .trio { display:flex;flex-direction:column;gap:14px; }
+#s2 .trio-row { display:flex;align-items:center;gap:14px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px; }
+#s2 .trio-letter { font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;min-width:36px;line-height:1; }
+#s2 .trio-title { font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px; }
+#s2 .trio-analogy { font-size:12px;color:var(--grey);line-height:1.4; }
+#s2 .right { padding:40px 48px;display:flex;align-items:center;justify-content:center; }
+/* Water analogy SVG container */
+#s2 .water-wrap { width:100%;max-width:340px; }
+
+/* ══════════════════════════════════
+   SLIDE 3 — VOLTAGE
+══════════════════════════════════ */
+#s3 { background: var(--navy); }
+#s3 .ga { width:500px;height:500px;top:-120px;right:-80px; background:radial-gradient(circle,rgba(234,179,8,.1),transparent 60%); }
+#s3 .inner { position:relative;z-index:2;height:100%;display:flex;padding:44px 64px;gap:52px;align-items:center; }
+#s3 .left { flex:1;display:flex;flex-direction:column;justify-content:center; }
+#s3 .right { width:340px;flex-shrink:0; }
+#s3 h2 { font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px; }
+#s3 h2 em { color:var(--yellow);font-style:italic; }
+#s3 .def { font-size:15px;color:#C8D8E8;line-height:1.7;margin-bottom:20px; }
+#s3 .unit-badge { display:inline-flex;align-items:center;gap:10px;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:6px;padding:10px 16px;margin-bottom:20px; }
+#s3 .unit-sym { font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--yellow);line-height:1; }
+#s3 .unit-info { display:flex;flex-direction:column; }
+#s3 .unit-name { font-size:14px;font-weight:600;color:var(--white); }
+#s3 .unit-sub  { font-size:11px;color:var(--grey); }
+#s3 .examples { display:flex;flex-direction:column;gap:8px; }
+#s3 .eg-row { display:flex;align-items:center;gap:12px;padding:9px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px; }
+#s3 .eg-val { font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--yellow);min-width:56px;line-height:1; }
+#s3 .eg-what { font-size:12px;color:var(--grey); }
+/* Battery SVG */
+#s3 .battery-wrap { width:100%;max-width:300px; }
+
+/* ══════════════════════════════════
+   SLIDE 4 — CURRENT
+══════════════════════════════════ */
+#s4 { background: var(--navy2); }
+#s4 .ga { width:500px;height:400px;bottom:-100px;left:-80px; background:radial-gradient(ellipse,rgba(8,145,178,.12),transparent 65%); }
+#s4 .inner { position:relative;z-index:2;height:100%;display:flex;padding:44px 64px;gap:52px;align-items:center; }
+#s4 .left { flex:1; }
+#s4 .right { width:340px;flex-shrink:0; }
+#s4 h2 { font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px; }
+#s4 h2 em { color:var(--lteal);font-style:italic; }
+#s4 .def { font-size:15px;color:#C8D8E8;line-height:1.7;margin-bottom:18px; }
+#s4 .unit-badge { display:inline-flex;align-items:center;gap:10px;background:rgba(8,145,178,.1);border:1px solid rgba(8,145,178,.3);border-radius:6px;padding:10px 16px;margin-bottom:18px; }
+#s4 .unit-sym { font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--lteal);line-height:1; }
+#s4 .unit-name { font-size:14px;font-weight:600;color:var(--white); }
+#s4 .unit-sub  { font-size:11px;color:var(--grey); }
+#s4 .dc-ac { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px; }
+#s4 .dc-card { padding:12px 14px;border-radius:8px; }
+#s4 .dc-card.dc { background:rgba(8,145,178,.08);border:1px solid rgba(8,145,178,.2); }
+#s4 .dc-card.ac { background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2); }
+#s4 .dc-label { font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:5px; }
+#s4 .dc-card.dc .dc-label { color:var(--lteal); }
+#s4 .dc-card.ac .dc-label { color:var(--gold); }
+#s4 .dc-desc { font-size:12px;color:var(--grey);line-height:1.5; }
+
+/* ══════════════════════════════════
+   SLIDE 5 — RESISTANCE
+══════════════════════════════════ */
+#s5 { background: var(--navy); }
+#s5 .ga { width:500px;height:400px;top:-80px;right:-80px; background:radial-gradient(circle,rgba(245,166,35,.1),transparent 60%); }
+#s5 .inner { position:relative;z-index:2;height:100%;display:flex;padding:44px 64px;gap:52px;align-items:center; }
+#s5 .left { flex:1; }
+#s5 .right { width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px; }
+#s5 h2 { font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px; }
+#s5 h2 em { color:var(--gold);font-style:italic; }
+#s5 .def { font-size:15px;color:#C8D8E8;line-height:1.7;margin-bottom:18px; }
+#s5 .unit-badge { display:inline-flex;align-items:center;gap:10px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:6px;padding:10px 16px;margin-bottom:18px; }
+#s5 .unit-sym { font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--gold);line-height:1; }
+#s5 .unit-name { font-size:14px;font-weight:600;color:var(--white); }
+#s5 .unit-sub  { font-size:11px;color:var(--grey); }
+#s5 .why-box { padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-left:3px solid var(--gold);border-radius:0 6px 6px 0; }
+#s5 .why-label { font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:5px; }
+#s5 .why-text { font-size:13px;color:#C8D8E8;line-height:1.6; }
+#s5 .res-card { padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px; }
+#s5 .res-val { font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:var(--gold);margin-bottom:4px; }
+#s5 .res-desc { font-size:12px;color:var(--grey);line-height:1.5; }
+
+/* ══════════════════════════════════
+   SLIDE 6 — OHM'S LAW (HERO)
+══════════════════════════════════ */
+#s6 { background: #080E18; }
+#s6 .ga { width:700px;height:700px;top:-200px;right:-200px; background:radial-gradient(circle,rgba(8,145,178,.15),transparent 55%); }
+#s6 .gb { width:400px;height:400px;bottom:-120px;left:-80px; background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%); }
+#s6 .inner { position:relative;z-index:2;height:100%;display:flex;padding:40px 64px;gap:52px;align-items:center; }
+#s6 .left { display:flex;flex-direction:column;justify-content:center;flex:1; }
+#s6 h2 { font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:8px; }
+#s6 .ohm-sub { font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:24px; }
+/* Triangle */
+#s6 .triangle-wrap { display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative;width:260px;height:230px;flex-shrink:0; }
+#s6 .tri-svg { position:absolute;inset:0; }
+#s6 .tri-cell { position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100px;height:80px;border-radius:10px;cursor:default;transition:all .2s; }
+#s6 .tri-cell:hover { transform:scale(1.07); }
+#s6 .tri-top  { top:0;left:50%;transform:translateX(-50%);background:rgba(8,145,178,.15);border:1px solid rgba(8,145,178,.35); }
+#s6 .tri-bl   { bottom:0;left:0;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3); }
+#s6 .tri-br   { bottom:0;right:0;background:rgba(39,121,212,.15);border:1px solid rgba(39,121,212,.35); }
+#s6 .tri-sym  { font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;line-height:1; }
+#s6 .tri-lbl  { font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;margin-top:2px; }
+#s6 .tri-top .tri-sym { color:var(--lteal); }
+#s6 .tri-top .tri-lbl { color:var(--lteal); }
+#s6 .tri-bl .tri-sym  { color:var(--gold); }
+#s6 .tri-bl .tri-lbl  { color:var(--gold); }
+#s6 .tri-br .tri-sym  { color:#7FB5FF; }
+#s6 .tri-br .tri-lbl  { color:#7FB5FF; }
+/* Formula cards */
+#s6 .formulas { display:flex;flex-direction:column;gap:10px; }
+#s6 .f-card { display:flex;align-items:center;gap:16px;padding:12px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;transition:all .2s; }
+#s6 .f-card:hover { background:rgba(8,145,178,.07);border-color:rgba(8,145,178,.25); }
+#s6 .f-eq { font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--white);min-width:140px; }
+#s6 .f-eq span { color:var(--lteal); }
+#s6 .f-words { font-size:12px;color:var(--grey);line-height:1.4; }
+#s6 .worked { margin-top:8px;padding:14px 18px;background:rgba(8,145,178,.08);border:1px solid rgba(8,145,178,.2);border-radius:8px; }
+#s6 .worked-label { font-family:'DM Mono',monospace;font-size:10px;color:var(--lteal);letter-spacing:2px;margin-bottom:8px; }
+#s6 .worked-calc { font-size:14px;color:#C8D8E8;line-height:1.8; }
+#s6 .worked-calc strong { color:var(--white); }
+#s6 .worked-calc em { color:var(--lteal);font-style:normal;font-weight:600; }
+
+/* ══════════════════════════════════
+   SLIDE 7 — RESISTOR COLOUR CODE
+══════════════════════════════════ */
+#s7 { background: var(--navy2); }
+#s7 .ga { width:400px;height:400px;bottom:-80px;right:-60px; background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%); }
+#s7 .inner { position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 64px; }
+#s7 h2 { font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);margin-bottom:6px; }
+#s7 .sub { font-size:14px;color:var(--grey);margin-bottom:24px; }
+/* Resistor body */
+#s7 .res-body-wrap { display:flex;align-items:center;justify-content:center;margin-bottom:24px; }
+/* Colour table */
+#s7 .color-table { display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1; }
+#s7 .color-cell { display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;transition:all .2s; }
+#s7 .color-cell:hover { transform:translateY(-3px);border-color:rgba(255,255,255,.2); }
+#s7 .c-swatch { width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.15); }
+#s7 .c-name  { font-size:11px;font-weight:600;color:var(--white); }
+#s7 .c-digit { font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);font-weight:500; }
+#s7 .tip-box { margin-top:16px;padding:12px 18px;background:rgba(8,145,178,.07);border:1px solid rgba(8,145,178,.2);border-radius:8px;font-size:13px;color:#8AAED4;display:flex;gap:12px;align-items:center; }
+
+/* ══════════════════════════════════
+   SLIDE 8 — BUILD YOUR CIRCUIT
+══════════════════════════════════ */
+#s8 { background: radial-gradient(ellipse at 20% 50%, #0D1C30, #08111F); }
+#s8 .ga { width:600px;height:600px;top:-150px;right:-150px; background:radial-gradient(circle,rgba(234,179,8,.12),transparent 55%); }
+#s8 .inner { position:relative;z-index:2;height:100%;display:flex;padding:44px 64px;gap:52px;align-items:center; }
+#s8 .left { flex:1;display:flex;flex-direction:column;justify-content:center; }
+#s8 .right { width:340px;flex-shrink:0; }
+#s8 h2 { font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px; }
+#s8 h2 span { color:var(--gold); }
+#s8 .intro { font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:22px; }
+#s8 .steps { display:flex;flex-direction:column;gap:10px; }
+#s8 .step { display:flex;gap:14px;align-items:flex-start; }
+#s8 .sn { width:28px;height:28px;background:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px; }
+#s8 .st { font-size:13px;color:var(--white);line-height:1.6; }
+#s8 .st span { color:var(--lteal);font-weight:600; }
+/* Circuit diagram panel */
+#s8 .circuit-panel { background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:14px; }
+#s8 .circuit-label { font-family:'DM Mono',monospace;font-size:10px;color:var(--lteal);letter-spacing:2px; }
+/* LED glow dot */
+#s8 .led-dot { width:32px;height:32px;background:#FFCC00;border-radius:50%;animation:ledGlow 1.8s ease-in-out infinite; }
+#s8 .circuit-note { font-size:12px;color:var(--grey);text-align:center;line-height:1.5; }
+
+/* ══════════════════════════════════
+   SLIDE 9 — WHAT JUST HAPPENED
+══════════════════════════════════ */
+#s9 { background: var(--navy); }
+#s9 .ga { width:500px;height:400px;top:-80px;right:-80px; background:radial-gradient(circle,rgba(8,145,178,.12),transparent 60%); }
+#s9 .inner { position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:44px 64px;justify-content:center; }
+#s9 h2 { font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);margin-bottom:8px; }
+#s9 .sub { font-size:14px;color:var(--grey);margin-bottom:28px; }
+#s9 .flow { display:flex;align-items:center;gap:0;margin-bottom:28px;flex-wrap:wrap; }
+#s9 .flow-node { display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;min-width:130px; }
+#s9 .fn-icon { font-size:28px; }
+#s9 .fn-label { font-family:'DM Mono',monospace;font-size:10px;color:var(--lteal);letter-spacing:1px; }
+#s9 .fn-val   { font-size:12px;color:#C8D8E8; }
+#s9 .flow-arrow { font-size:22px;color:rgba(255,255,255,.2);padding:0 4px;flex-shrink:0; }
+#s9 .explain-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px; }
+#s9 .ex-card { padding:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px; }
+#s9 .ex-q    { font-size:12px;font-weight:600;color:var(--lteal);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:.5px; }
+#s9 .ex-a    { font-size:13px;color:#C8D8E8;line-height:1.6; }
+
+/* ══════════════════════════════════
+   SLIDE 10 — EXPERIMENT
+══════════════════════════════════ */
+#s10 { background: var(--navy2); }
+#s10 .ga { width:500px;height:400px;bottom:-100px;left:-80px; background:radial-gradient(ellipse,rgba(245,166,35,.08),transparent 60%); }
+#s10 .inner { position:relative;z-index:2;height:100%;display:flex;padding:44px 64px;gap:52px;align-items:center; }
+#s10 .left { flex:1; }
+#s10 .right { width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:14px; }
+#s10 h2 { font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px; }
+#s10 h2 span { color:var(--gold); }
+#s10 .premise { font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:22px; }
+#s10 .exp-steps { display:flex;flex-direction:column;gap:10px;margin-bottom:18px; }
+#s10 .ex-step { display:flex;gap:12px;align-items:flex-start; }
+#s10 .ex-n { width:24px;height:24px;background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0;margin-top:2px; }
+#s10 .ex-t { font-size:13px;color:var(--white);line-height:1.6; }
+#s10 .ohm-proof { padding:14px 16px;background:rgba(8,145,178,.07);border:1px solid rgba(8,145,178,.2);border-radius:8px; }
+#s10 .op-label { font-family:'DM Mono',monospace;font-size:10px;color:var(--lteal);letter-spacing:2px;margin-bottom:10px; }
+#s10 .op-row { display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;color:#C8D8E8; }
+#s10 .op-row:last-child { border:none; }
+#s10 .op-val { font-family:'DM Mono',monospace;font-size:12px;color:var(--lteal); }
+#s10 .res-compare { display:flex;flex-direction:column;gap:10px; }
+#s10 .rc-card { padding:14px 16px;border-radius:8px; }
+#s10 .rc-card.r1 { background:rgba(8,145,178,.08);border:1px solid rgba(8,145,178,.2); }
+#s10 .rc-card.r2 { background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2); }
+#s10 .rc-val   { font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;line-height:1;margin-bottom:4px; }
+#s10 .rc-card.r1 .rc-val { color:var(--lteal); }
+#s10 .rc-card.r2 .rc-val { color:var(--gold); }
+#s10 .rc-desc  { font-size:12px;color:var(--grey);line-height:1.5; }
+#s10 .rc-result { font-size:12px;margin-top:4px;font-weight:600; }
+#s10 .rc-card.r1 .rc-result { color:var(--lteal); }
+#s10 .rc-card.r2 .rc-result { color:var(--gold); }
+
+/* ══════════════════════════════════
+   SLIDE 11 — CLOSING
+══════════════════════════════════ */
+#s11 { background: radial-gradient(ellipse at 30% 40%, #0D1C30, #08111F); }
+#s11 .ga { width:600px;height:600px;top:-150px;right:-150px; background:radial-gradient(circle,rgba(8,145,178,.14),transparent 55%); }
+#s11 .gb { width:400px;height:300px;bottom:-80px;left:-60px; background:radial-gradient(ellipse,rgba(245,166,35,.07),transparent 60%); }
+#s11 .accent { position:absolute;left:0;top:0;bottom:0;width:5px; background:linear-gradient(180deg,var(--lteal),var(--blue),transparent); }
+#s11 .inner { position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px; }
+#s11 .day-done { font-family:'DM Mono',monospace;font-size:11px;color:var(--lteal);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px; }
+#s11 .day-done::before { content:'';display:block;width:32px;height:1px;background:var(--lteal); }
+#s11 h2 { font-family:'Cormorant Garamond',serif;font-size:clamp(38px,5vw,60px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px; }
+#s11 h2 em { color:var(--lteal);font-style:italic; }
+#s11 .can-do { display:flex;flex-direction:column;gap:8px;margin-bottom:28px; }
+#s11 .cd-row { display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8; }
+#s11 .cd-check { width:20px;height:20px;background:rgba(8,145,178,.15);border:1px solid rgba(8,145,178,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lteal);flex-shrink:0; }
+#s11 .tomorrow-box { padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8; }
+#s11 .tomorrow-box strong { color:var(--lteal); }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+
+<div class="deck" id="deck">
+
+<!-- ════════════════════════════
+     SLIDE 1 — OPENING
+════════════════════════════ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 2 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au"><em>Voltage.</em><br>Current.<br>Resistance.</h1>
+    <p class="sub au">Three words that explain everything electrical. By the end of today, you will understand all three &mdash; and you will build your first live circuit.</p>
+    <div class="recap au">
+      <span class="tag tag-teal">Day 2 of 10</span>
+      <span class="tag tag-gold">First Live Circuit</span>
+      <span class="tag tag-blue">Ohm&rsquo;s Law</span>
+    </div>
+    <div class="safety-reminder au">
+      <strong>Safety Recap:</strong> Before we begin &mdash; can someone state Rule 1 from yesterday? The one rule that applies before touching any circuit.
+    </div>
+  </div>
+  <div class="inst au">
+    <p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p>
+    <p>KLE TECHNOLOGICAL UNIVERSITY</p>
+    <p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 2 — WATER ANALOGY
+════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-teal">THE ANALOGY</span></div>
+      <h2 class="au">Think of<br><span>water.</span></h2>
+      <p class="intro au">Electricity is invisible. Water is not. Every concept in today&rsquo;s session maps directly onto something you already understand about water in a pipe.</p>
+      <div class="trio">
+        <div class="trio-row au">
+          <div class="trio-letter" style="color:#EAB308;">V</div>
+          <div>
+            <div class="trio-title">Voltage &mdash; The Pressure</div>
+            <div class="trio-analogy">Water pressure in a tank. Higher tank = more pressure pushing water through the pipe.</div>
+          </div>
+        </div>
+        <div class="trio-row au">
+          <div class="trio-letter" style="color:#22D3EE;">I</div>
+          <div>
+            <div class="trio-title">Current &mdash; The Flow Rate</div>
+            <div class="trio-analogy">How much water is actually flowing per second. More pressure = more flow.</div>
+          </div>
+        </div>
+        <div class="trio-row au">
+          <div class="trio-letter" style="color:#F5A623;">R</div>
+          <div>
+            <div class="trio-title">Resistance &mdash; The Pipe Narrowness</div>
+            <div class="trio-analogy">A narrow pipe restricts flow. A wide pipe lets it flow freely. Same idea in electricity.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Water pipe analogy SVG -->
+      <div class="water-wrap">
+        <svg viewBox="0 0 320 380" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Tank -->
+          <rect x="100" y="20" width="120" height="100" rx="8" fill="rgba(39,121,212,0.12)" stroke="rgba(39,121,212,0.4)" stroke-width="1.5"/>
+          <rect x="100" y="20" width="120" height="65" rx="6" fill="rgba(39,121,212,0.2)"/>
+          <text x="160" y="58" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#22D3EE" letter-spacing="1">VOLTAGE</text>
+          <text x="160" y="74" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#6B7E96">PRESSURE</text>
+          <!-- Arrow down from tank -->
+          <line x1="160" y1="120" x2="160" y2="155" stroke="rgba(39,121,212,0.5)" stroke-width="2" stroke-dasharray="4,3"/>
+          <!-- Pipe left -->
+          <rect x="60" y="155" width="90" height="28" rx="4" fill="rgba(8,145,178,0.12)" stroke="rgba(8,145,178,0.35)" stroke-width="1.5"/>
+          <!-- Flow arrows left pipe -->
+          <path d="M75 169 L85 169" stroke="#22D3EE" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M95 169 L105 169" stroke="#22D3EE" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M115 169 L125 169" stroke="#22D3EE" stroke-width="1.5" stroke-linecap="round"/>
+          <text x="105" y="198" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#22D3EE" letter-spacing="1">CURRENT (I)</text>
+          <!-- Narrow pipe right -->
+          <rect x="170" y="161" width="90" height="16" rx="3" fill="rgba(245,166,35,0.1)" stroke="rgba(245,166,35,0.35)" stroke-width="1.5"/>
+          <text x="215" y="198" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#F5A623" letter-spacing="1">RESISTANCE (R)</text>
+          <!-- Junction -->
+          <circle cx="160" cy="169" r="6" fill="#22D3EE" opacity="0.7"/>
+          <!-- LED / bulb at bottom -->
+          <circle cx="160" cy="280" r="28" fill="rgba(255,200,0,0.08)" stroke="rgba(255,200,0,0.4)" stroke-width="1.5"/>
+          <circle cx="160" cy="280" r="14" fill="rgba(255,220,0,0.25)"/>
+          <circle cx="160" cy="280" r="7"  fill="#FFCC00" opacity="0.9"/>
+          <text x="160" y="325" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#F5A623" letter-spacing="1">LOAD / LED</text>
+          <!-- Pipes to bulb -->
+          <line x1="105" y1="169" x2="105" y2="280" stroke="rgba(8,145,178,0.3)" stroke-width="2"/>
+          <line x1="105" y1="280" x2="132" y2="280" stroke="rgba(8,145,178,0.3)" stroke-width="2"/>
+          <line x1="188" y1="280" x2="215" y2="280" stroke="rgba(245,166,35,0.3)" stroke-width="2"/>
+          <line x1="215" y1="169" x2="215" y2="280" stroke="rgba(245,166,35,0.3)" stroke-width="2"/>
+          <!-- Return line -->
+          <line x1="105" y1="340" x2="215" y2="340" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <line x1="105" y1="308" x2="105" y2="340" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <line x1="215" y1="308" x2="215" y2="340" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <text x="160" y="360" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.2)" letter-spacing="1">RETURN PATH</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 3 — VOLTAGE
+════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">CONCEPT 1 OF 3</span></div>
+      <h2 class="au"><em>Voltage</em><br>— The Pressure</h2>
+      <p class="def au">Voltage is the <strong>electrical pressure</strong> that pushes electrons around a circuit. Without it, nothing moves. With too much of it, things break. With just the right amount, work gets done.</p>
+      <div class="unit-badge au">
+        <div class="unit-sym">V</div>
+        <div class="unit-info">
+          <span class="unit-name">Volts &mdash; named after Alessandro Volta</span>
+          <span class="unit-sub">Measured with a voltmeter or multimeter set to DCV / ACV</span>
+        </div>
+      </div>
+      <div class="examples au">
+        <div class="eg-row"><span class="eg-val">1.5 V</span><span class="eg-what">AA battery &mdash; inside your TV remote</span></div>
+        <div class="eg-row"><span class="eg-val">9 V</span><span class="eg-what">PP3 battery &mdash; what you will use today in this lab</span></div>
+        <div class="eg-row"><span class="eg-val">12 V</span><span class="eg-what">Car battery &mdash; enough to cause a serious shock</span></div>
+        <div class="eg-row"><span class="eg-val">230 V</span><span class="eg-what">Mains supply (India) &mdash; wall socket &mdash; potentially lethal</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Battery illustration -->
+      <div class="battery-wrap">
+        <svg viewBox="0 0 280 360" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Battery body -->
+          <rect x="70" y="60" width="140" height="240" rx="14" fill="rgba(20,30,50,0.8)" stroke="rgba(234,179,8,0.5)" stroke-width="2"/>
+          <!-- Terminal cap -->
+          <rect x="110" y="40" width="60" height="24" rx="6" fill="rgba(234,179,8,0.3)" stroke="rgba(234,179,8,0.6)" stroke-width="1.5"/>
+          <!-- Charge fill -->
+          <rect x="76" y="180" width="128" height="114" rx="10" fill="rgba(234,179,8,0.12)"/>
+          <!-- Level bars -->
+          <rect x="88" y="200" width="104" height="16" rx="3" fill="rgba(234,179,8,0.3)"/>
+          <rect x="88" y="224" width="104" height="16" rx="3" fill="rgba(234,179,8,0.25)"/>
+          <rect x="88" y="248" width="80" height="16" rx="3" fill="rgba(234,179,8,0.18)"/>
+          <!-- 9V label -->
+          <text x="140" y="140" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="52" font-weight="700" fill="#EAB308" opacity="0.9">9V</text>
+          <text x="140" y="168" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="rgba(234,179,8,0.5)" letter-spacing="2">BATTERY</text>
+          <!-- + and - labels -->
+          <text x="140" y="50" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="700" fill="#EAB308">+</text>
+          <text x="140" y="320" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="700" fill="#6B7E96">&minus;</text>
+          <!-- Glow -->
+          <circle cx="140" cy="52" r="18" fill="rgba(234,179,8,0.08)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 4 — CURRENT
+════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-teal">CONCEPT 2 OF 3</span></div>
+      <h2 class="au"><em>Current</em><br>— The Flow</h2>
+      <p class="def au">Current is the <strong>actual movement of electrons</strong> through a conductor. Voltage creates the pressure; current is what actually flows as a result. No current = no work done.</p>
+      <div class="unit-badge au">
+        <div class="unit-sym">A</div>
+        <div class="unit-info">
+          <span class="unit-name">Amperes (Amps) &mdash; named after Andr&eacute; Amp&egrave;re</span>
+          <span class="unit-sub">Small currents measured in milliamps (mA). 1A = 1000 mA</span>
+        </div>
+      </div>
+      <div class="dc-ac au">
+        <div class="dc-card dc">
+          <div class="dc-label">DC &mdash; DIRECT CURRENT</div>
+          <div class="dc-desc">Flows in one direction only. Batteries. Your 9V circuit today. Predictable and safe to work with at low voltages.</div>
+        </div>
+        <div class="dc-card ac">
+          <div class="dc-label">AC &mdash; ALTERNATING CURRENT</div>
+          <div class="dc-desc">Reverses direction 50 times per second (50 Hz in India). Mains supply. Never handle live AC in this programme.</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Current flow SVG -->
+      <svg viewBox="0 0 280 360" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+        <!-- Wire loop -->
+        <rect x="50" y="80" width="180" height="200" rx="20" fill="none" stroke="rgba(8,145,178,0.25)" stroke-width="12" stroke-linecap="round"/>
+        <!-- Animated flow dots -->
+        <circle r="6" fill="#22D3EE" opacity="0.9">
+          <animateMotion dur="2s" repeatCount="indefinite" path="M50,180 L50,100 Q50,80 70,80 L210,80 Q230,80 230,100 L230,180 Q230,280 210,280 L70,280 Q50,280 50,260 L50,180" calcMode="linear"/>
+        </circle>
+        <circle r="5" fill="#22D3EE" opacity="0.7">
+          <animateMotion dur="2s" begin="0.5s" repeatCount="indefinite" path="M50,180 L50,100 Q50,80 70,80 L210,80 Q230,80 230,100 L230,180 Q230,280 210,280 L70,280 Q50,280 50,260 L50,180" calcMode="linear"/>
+        </circle>
+        <circle r="4" fill="#22D3EE" opacity="0.5">
+          <animateMotion dur="2s" begin="1s" repeatCount="indefinite" path="M50,180 L50,100 Q50,80 70,80 L210,80 Q230,80 230,100 L230,180 Q230,280 210,280 L70,280 Q50,280 50,260 L50,180" calcMode="linear"/>
+        </circle>
+        <!-- Battery in loop -->
+        <rect x="116" y="145" width="48" height="70" rx="8" fill="rgba(234,179,8,0.15)" stroke="rgba(234,179,8,0.4)" stroke-width="1.5"/>
+        <text x="140" y="187" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="22" font-weight="700" fill="#EAB308">9V</text>
+        <!-- Flow direction label -->
+        <text x="140" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#22D3EE" letter-spacing="2">CONVENTIONAL FLOW</text>
+        <path d="M175 56 L195 56" stroke="#22D3EE" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- mA callout -->
+        <text x="140" y="340" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="rgba(8,145,178,0.6)" letter-spacing="1">~9 mA IN TODAY&rsquo;S CIRCUIT</text>
+        <defs>
+          <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#22D3EE"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 5 — RESISTANCE
+════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">CONCEPT 3 OF 3</span></div>
+      <h2 class="au"><em>Resistance</em><br>— The Friction</h2>
+      <p class="def au">Resistance is how much a component <strong>opposes the flow of current</strong>. It converts electrical energy into heat or light. Without resistance, current would flow uncontrolled and destroy everything in its path.</p>
+      <div class="unit-badge au">
+        <div class="unit-sym">&Omega;</div>
+        <div class="unit-info">
+          <span class="unit-name">Ohms &mdash; named after Georg Simon Ohm</span>
+          <span class="unit-sub">Higher value = more resistance = less current flows</span>
+        </div>
+      </div>
+      <div class="why-box au">
+        <div class="why-label">WHY YOUR LED NEEDS A RESISTOR</div>
+        <div class="why-text">An LED (red) needs about 2V and 20mA to shine. Your 9V battery would push far too much current through it — the LED would burn out in seconds. A 470&Omega; resistor limits the current to a safe level and the LED lives happily.</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="res-card au">
+        <div class="res-val">470&Omega;</div>
+        <div class="res-desc">The resistor in today&rsquo;s circuit. Limits current to ~14 mA from 9V. The LED shines safely.</div>
+      </div>
+      <div class="res-card au">
+        <div class="res-val">1k&Omega;</div>
+        <div class="res-desc">1,000 ohms. Higher resistance means less current (9 mA). The LED will be dimmer. You will compare both in Slide 10.</div>
+      </div>
+      <div class="res-card au">
+        <div class="res-val">10k&Omega;</div>
+        <div class="res-desc">10,000 ohms. Very low current (0.9 mA). The LED barely glows &mdash; but it is protected completely.</div>
+      </div>
+      <!-- Resistor body SVG -->
+      <svg viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <line x1="20" y1="40" x2="60" y2="40" stroke="#C8D4E0" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="60" y="22" width="160" height="36" rx="10" fill="rgba(210,180,100,0.25)" stroke="rgba(210,180,100,0.5)" stroke-width="1.5"/>
+        <!-- Colour bands -->
+        <rect x="82"  y="22" width="14" height="36" rx="3" fill="#F5A623" opacity="0.9"/>
+        <rect x="104" y="22" width="14" height="36" rx="3" fill="#7B3F00" opacity="0.9"/>
+        <rect x="126" y="22" width="14" height="36" rx="3" fill="#1054A8" opacity="0.9"/>
+        <rect x="172" y="22" width="14" height="36" rx="3" fill="#FFD700" opacity="0.9"/>
+        <line x1="220" y1="40" x2="260" y2="40" stroke="#C8D4E0" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="140" y="76" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(245,166,35,0.6)" letter-spacing="1">470&Omega; &mdash; YELLOW VIOLET BROWN GOLD</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 6 — OHM'S LAW
+════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-teal">THE FORMULA</span></div>
+      <h2 class="au">Ohm&rsquo;s Law &mdash;<br>The One Formula<br>You Need</h2>
+      <p class="ohm-sub au">Three quantities. One relationship. If you know any two, you can always calculate the third. This is the foundation of all electrical work.</p>
+      <div class="formulas au">
+        <div class="f-card"><div class="f-eq"><span>V</span> = I &times; R</div><div class="f-words">Voltage = Current &times; Resistance &mdash; to find Voltage</div></div>
+        <div class="f-card"><div class="f-eq"><span>I</span> = V &divide; R</div><div class="f-words">Current = Voltage &divide; Resistance &mdash; to find Current</div></div>
+        <div class="f-card"><div class="f-eq"><span>R</span> = V &divide; I</div><div class="f-words">Resistance = Voltage &divide; Current &mdash; to find Resistance</div></div>
+      </div>
+      <div class="worked au">
+        <div class="worked-label">WORKED EXAMPLE &mdash; TODAY&rsquo;S CIRCUIT</div>
+        <div class="worked-calc">
+          V = <strong>9V</strong> &nbsp;&nbsp; R = <strong>470&Omega;</strong><br>
+          I = V &divide; R = 9 &divide; 470 = <em>0.019 A = 19 mA</em><br>
+          The LED receives 19 milliamps &mdash; within its safe range.
+        </div>
+      </div>
+    </div>
+    <!-- Triangle -->
+    <div class="triangle-wrap au">
+      <svg class="tri-svg" viewBox="0 0 260 230" fill="none">
+        <polygon points="130,10 10,220 250,220" fill="rgba(8,145,178,0.05)" stroke="rgba(8,145,178,0.2)" stroke-width="1"/>
+        <line x1="10" y1="150" x2="250" y2="150" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      </svg>
+      <div class="tri-cell tri-top au">
+        <div class="tri-sym">V</div>
+        <div class="tri-lbl">VOLTS</div>
+      </div>
+      <div class="tri-cell tri-bl au">
+        <div class="tri-sym">I</div>
+        <div class="tri-lbl">AMPS</div>
+      </div>
+      <div class="tri-cell tri-br au">
+        <div class="tri-sym">R</div>
+        <div class="tri-lbl">OHMS</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 7 — RESISTOR COLOUR CODE
+════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-gold">QUICK REFERENCE</span></div>
+    <h2 class="au">Reading a Resistor</h2>
+    <p class="sub au">You do not need to memorise this. You need to know it exists and be able to use the reference card. The four colour bands tell you the resistance value.</p>
+    <!-- Resistor body -->
+    <div class="res-body-wrap au">
+      <svg viewBox="0 0 500 70" fill="none" xmlns="http://www.w3.org/2000/svg" width="80%" style="max-width:480px;">
+        <line x1="20" y1="35" x2="80" y2="35" stroke="#C8D4E0" stroke-width="3"/>
+        <rect x="80" y="10" width="340" height="50" rx="14" fill="rgba(210,180,100,0.2)" stroke="rgba(210,180,100,0.5)" stroke-width="1.5"/>
+        <rect x="106" y="10" width="28" height="50" rx="4" fill="#8B4513"/>
+        <rect x="152" y="10" width="28" height="50" rx="4" fill="#FF0000"/>
+        <rect x="198" y="10" width="28" height="50" rx="4" fill="#FF8C00"/>
+        <rect x="316" y="10" width="28" height="50" rx="4" fill="#FFD700"/>
+        <line x1="420" y1="35" x2="480" y2="35" stroke="#C8D4E0" stroke-width="3"/>
+        <text x="120" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.3)">1st</text>
+        <text x="166" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.3)">2nd</text>
+        <text x="212" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.3)">×10</text>
+        <text x="330" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.3)">±tol</text>
+      </svg>
+    </div>
+    <!-- Colour table -->
+    <div class="color-table">
+      <div class="color-cell au"><div class="c-swatch" style="background:#000;"></div><div class="c-name">Black</div><div class="c-digit">0</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#8B4513;"></div><div class="c-name">Brown</div><div class="c-digit">1</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#FF0000;"></div><div class="c-name">Red</div><div class="c-digit">2</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#FF8C00;"></div><div class="c-name">Orange</div><div class="c-digit">3</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#FFD700;border-color:rgba(255,255,255,.3);"></div><div class="c-name">Yellow</div><div class="c-digit">4</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#228B22;"></div><div class="c-name">Green</div><div class="c-digit">5</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#4169E1;"></div><div class="c-name">Blue</div><div class="c-digit">6</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#9400D3;"></div><div class="c-name">Violet</div><div class="c-digit">7</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#808080;"></div><div class="c-name">Grey</div><div class="c-digit">8</div></div>
+      <div class="color-cell au"><div class="c-swatch" style="background:#F5F5F5;"></div><div class="c-name">White</div><div class="c-digit">9</div></div>
+    </div>
+    <div class="tip-box au">
+      <span style="font-size:18px;flex-shrink:0;">&#x1F4A1;</span>
+      <span>Memory aid for the first six: <strong style="color:#C8D8E8;">B B R O Y</strong> &mdash; <em style="color:var(--lteal);">B</em>ad <em style="color:var(--lteal);">B</em>eer <em style="color:var(--lteal);">R</em>ots <em style="color:var(--lteal);">O</em>ur <em style="color:var(--lteal);">Y</em>oung Guts &mdash; (Black, Brown, Red, Orange, Yellow, Green). Reference cards are on the bench.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 8 — BUILD YOUR CIRCUIT
+════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-teal">HANDS-ON TASK</span></div>
+      <h2 class="au">Build Your<br><span>First Circuit</span></h2>
+      <p class="intro au">Everything on your bench is exactly what you need. Follow each step. Do not rush. When the LED lights up, that is Ohm&rsquo;s Law working in your hands.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Place the <span>breadboard</span> flat on the bench. Orient it so the centre groove runs horizontally.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Insert the <span>470&Omega; resistor</span> across the centre groove &mdash; one leg each side.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Insert the <span>LED</span> &mdash; longer leg (anode +) in the same column as one resistor leg.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Connect a <span>red jumper wire</span> from the 9V battery + terminal to the free resistor leg.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st">Connect a <span>black jumper wire</span> from the LED&rsquo;s short leg (cathode &minus;) back to the battery &minus; terminal.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st"><span>Connect the battery.</span> The LED should light up. If it does not &mdash; check LED polarity first.</div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="circuit-panel">
+        <div class="circuit-label">CIRCUIT DIAGRAM</div>
+        <!-- Circuit SVG -->
+        <svg viewBox="0 0 280 260" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Battery -->
+          <rect x="20" y="90" width="44" height="80" rx="8" fill="rgba(234,179,8,0.12)" stroke="rgba(234,179,8,0.5)" stroke-width="1.5"/>
+          <text x="42" y="134" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="18" font-weight="700" fill="#EAB308">9V</text>
+          <text x="42" y="152" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(234,179,8,0.5)">BATTERY</text>
+          <!-- Resistor -->
+          <line x1="80" y1="90" x2="110" y2="90" stroke="#22D3EE" stroke-width="2"/>
+          <rect x="110" y="78" width="60" height="24" rx="6" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.5)" stroke-width="1.5"/>
+          <text x="140" y="94" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#F5A623">470Ω</text>
+          <line x1="170" y1="90" x2="200" y2="90" stroke="#22D3EE" stroke-width="2"/>
+          <!-- LED -->
+          <polygon points="200,75 220,90 200,105" fill="rgba(255,200,0,0.25)" stroke="rgba(255,200,0,0.6)" stroke-width="1.5"/>
+          <line x1="220" y1="75" x2="220" y2="105" stroke="rgba(255,200,0,0.6)" stroke-width="1.5"/>
+          <!-- LED glow when active -->
+          <circle cx="210" cy="90" r="16" fill="rgba(255,220,0,0.08)" style="animation:pulse 2s ease-in-out infinite"/>
+          <!-- Wires -->
+          <line x1="64" y1="90" x2="80" y2="90" stroke="#22D3EE" stroke-width="2" stroke-dasharray="220" stroke-dashoffset="0" style="animation:traceFlow 1.2s ease forwards;animation-delay:.5s"/>
+          <line x1="220" y1="90" x2="240" y2="90" stroke="#22D3EE" stroke-width="2"/>
+          <line x1="240" y1="90" x2="240" y2="170" stroke="#22D3EE" stroke-width="2"/>
+          <line x1="20" y1="170" x2="240" y2="170" stroke="#8AAED4" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <!-- Labels -->
+          <text x="42" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">GND</text>
+          <text x="210" y="118" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,200,0,0.6)">LED</text>
+        </svg>
+        <div class="led-dot"></div>
+        <div class="circuit-note">When correctly wired, the LED glows. That is Ohm&rsquo;s Law in action &mdash; 9V &divide; 470&Omega; = 19 mA through the LED.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 9 — WHAT JUST HAPPENED
+════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-teal">DEBRIEF</span></div>
+    <h2 class="au">What Just Happened?</h2>
+    <p class="sub au">The LED lit up. Here is exactly what happened inside that circuit &mdash; in the language you now know.</p>
+    <!-- Circuit flow -->
+    <div class="flow au">
+      <div class="flow-node">
+        <div class="fn-icon">&#x1F50B;</div>
+        <div class="fn-label">BATTERY</div>
+        <div class="fn-val">9V source</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="fn-icon">&#x26A1;</div>
+        <div class="fn-label">VOLTAGE</div>
+        <div class="fn-val">Pushes electrons</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="fn-icon">&#x1F9F2;</div>
+        <div class="fn-label">RESISTOR</div>
+        <div class="fn-val">Limits to 19mA</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="fn-icon" style="color:#FFCC00;">&#x1F4A1;</div>
+        <div class="fn-label">LED</div>
+        <div class="fn-val">Converts to light</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="fn-icon">&#x21A9;</div>
+        <div class="fn-label">RETURN</div>
+        <div class="fn-val">Back to battery</div>
+      </div>
+    </div>
+    <!-- Explanation grid -->
+    <div class="explain-grid">
+      <div class="ex-card au">
+        <div class="ex-q">WHY DID IT LIGHT UP?</div>
+        <div class="ex-a">The 9V battery created enough pressure (voltage) to push current through the resistor and LED. The LED converts current into light &mdash; that is its only job.</div>
+      </div>
+      <div class="ex-card au">
+        <div class="ex-q">WHAT DID THE RESISTOR DO?</div>
+        <div class="ex-a">Without it, the battery would push ~19A through the LED &mdash; destroying it in milliseconds. The 470&Omega; resistor limited current to a safe 19mA. It was the bodyguard.</div>
+      </div>
+      <div class="ex-card au">
+        <div class="ex-q">WHAT IS OHM&rsquo;S LAW HERE?</div>
+        <div class="ex-a">I = V &divide; R = 9 &divide; 470 = 0.019 A (19 mA). You predicted the current before you built the circuit. The circuit confirmed it. That is engineering.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 10 — EXPERIMENT
+════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">EXPERIMENT</span></div>
+      <h2 class="au">Swap the<br><span>Resistor.</span><br>Observe.</h2>
+      <p class="premise au">You have a 1k&Omega; resistor on your bench. Swap it for the 470&Omega; one. Watch what happens to the LED brightness. Then calculate why using Ohm&rsquo;s Law.</p>
+      <div class="exp-steps">
+        <div class="ex-step au"><div class="ex-n">1</div><div class="ex-t">Remove the 470&Omega; resistor from the breadboard without disconnecting anything else.</div></div>
+        <div class="ex-step au"><div class="ex-n">2</div><div class="ex-t">Insert the 1k&Omega; resistor in the same holes. Reconnect the battery.</div></div>
+        <div class="ex-step au"><div class="ex-n">3</div><div class="ex-t">Observe: is the LED brighter or dimmer? Why? Write your prediction before reconnecting.</div></div>
+        <div class="ex-step au"><div class="ex-n">4</div><div class="ex-t">Calculate I = 9 &divide; 1000 = 9 mA. Compare to the 19 mA with 470&Omega;. Does the brightness match?</div></div>
+      </div>
+      <div class="ohm-proof au">
+        <div class="op-label">OHMIC PROOF</div>
+        <div class="op-row"><span>With 470&Omega;</span><span class="op-val">I = 9 &divide; 470 = 19 mA</span></div>
+        <div class="op-row"><span>With 1k&Omega;</span><span class="op-val">I = 9 &divide; 1000 = 9 mA</span></div>
+        <div class="op-row"><span>Difference</span><span class="op-val">Half the current &rarr; dimmer LED</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="res-compare">
+        <div class="rc-card r1 au">
+          <div class="rc-val">470&Omega;</div>
+          <div class="rc-desc">Lower resistance &mdash; more current flows. LED is brighter. Closer to the safe maximum for the LED.</div>
+          <div class="rc-result">19 mA &mdash; BRIGHT</div>
+        </div>
+        <div class="rc-card r2 au">
+          <div class="rc-val">1k&Omega;</div>
+          <div class="rc-desc">Higher resistance &mdash; less current flows. LED is dimmer but safer. Longer lifespan at lower current.</div>
+          <div class="rc-result">9 mA &mdash; DIMMER</div>
+        </div>
+        <div style="padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;" class="au">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lteal);letter-spacing:1px;margin-bottom:6px;">THE INSIGHT</p>
+          <p style="font-size:13px;color:#C8D8E8;line-height:1.6;">You just controlled the brightness of a light using nothing but Ohm&rsquo;s Law and a component swap. This is how every dimmer switch, every LED driver, and every variable power supply in the world works.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════
+     SLIDE 11 — CLOSING
+════════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 2 COMPLETE &nbsp;&middot;&nbsp; 8 SESSIONS TO GO</div>
+    <h2 class="au">You just built<br>your first<br><em>live circuit.</em></h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Explain Voltage, Current and Resistance in plain language</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Apply Ohm&rsquo;s Law (V = I &times; R) to calculate any unknown</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Build a functioning LED circuit on a breadboard</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Explain why a resistor is essential for protecting an LED</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 3:</strong> Circuit diagrams &amp; component identification. You will learn to read a schematic and sort 20 components by name &mdash; the building blocks of every circuit you will ever build.
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL = 11;
+let cur = 0, notesOpen = false;
+
+const NOTES = [
+  `<strong>Start with the safety recap — non-negotiable.</strong> Before showing this slide, ask the room: "Can someone give me Rule 1 from yesterday without looking?" Wait for an answer. If no one volunteers, call on someone gently. This signals that safety is not a one-day topic — it is how every session opens. <em>Then</em> advance to the slide. The opening phrase "Three words that explain everything electrical" should be said aloud before revealing the headline. Pause after each word: Voltage. Current. Resistance. Let the anticipation build. <em>Timing: safety recap 3 minutes, slide content 2 minutes.</em>`,
+
+  `<strong>This analogy is the most important teaching tool in the session.</strong> Do not skip it or rush it. Ask participants to close their eyes and imagine water in a tall tank connected to a pipe. "The taller the tank, the more pressure at the bottom — that is Voltage." Then: "The water flowing out of the pipe — that is Current." Then: "Now imagine the pipe gets narrower — less water flows — that is Resistance." Open eyes, show the SVG diagram. Walk through each element. <em>Key check: ask one participant to explain the analogy back to you in their own words. This retrieval moment is more valuable than your explanation.</em>`,
+
+  `<strong>Voltage is the one concept participants underestimate.</strong> They think of it as just "how strong the electricity is." Clarify: it is specifically the pressure difference between two points. Use the examples on the slide to build a mental scale. Spend time on the 230V mains line — say clearly: "At 50mA, mains current can stop your heart. We never touch live 230V in this programme. Ever. This is why Rule 1 exists." <em>Then pick up the 9V battery from the bench and say: "This is what we use. It cannot kill you. It can give you a mild tingle if you touch both terminals — which is fine to know."</em>`,
+
+  `<strong>The DC/AC distinction matters for safety, not just theory.</strong> Explain DC visually — electrons flowing in one direction, like water through a pipe downhill. Then explain AC — electrons reversing direction 50 times per second. Say: "Your phone charger converts 230V AC from the wall into 5V DC that your phone understands. That is why chargers get warm — conversion wastes a little energy as heat." <em>The animated SVG on this slide shows electrons moving — point to it and say: "That loop is approximately what is happening inside the wire in your hands right now."</em>`,
+
+  `<strong>The LED protection story is the breakthrough moment for Resistance.</strong> Hold up a bare LED and say: "If I connect this directly to the 9V battery with no resistor, watch." If you have a sacrificial LED you are prepared to burn out, do it — the brief flash and death of the LED is unforgettable. If not, simulate it verbally. Then hold up the resistor: "This small striped component costs about 50 paise and it saves the LED. That is what resistance does." <em>Participants who came from pharma or operations backgrounds will immediately connect this to fuses and circuit breakers in their own facilities.</em>`,
+
+  `<strong>The triangle is the memory device — teach it explicitly.</strong> Show the triangle and say: "Cover the quantity you want to find. What is left tells you the formula." Cover V — you see I × R. Cover I — you see V over R. Cover R — you see V over I. Have participants do this with their hand over the projector or on a piece of paper. <em>The worked example on this slide is critical — go through it step by step on the whiteboard, not just on screen. Write: V=9, R=470, I=? Then solve it. Ask: "Is 19 milliamps safe for an LED?" Answer: yes, typical LEDs are rated for 20mA maximum. You are right at the edge of safe.</em>`,
+
+  `<strong>Be explicit: this is reference material, not memorisation.</strong> Say: "I am not asking you to memorise the colour code. I am asking you to know it exists, know where the reference card is, and be able to use it." Demonstrate the mnemonic once. Then pick up the 470Ω resistor and decode it together: Yellow (4) — Violet (7) — Brown (×10) = 470Ω. Gold band = 5% tolerance. <em>Then give participants 3 minutes to identify the value of two random resistors from their component tray using the reference card. This is the only hands-on task on this slide.</em>`,
+
+  `<strong>Walk slowly through each step.</strong> Do not advance the slide — stay on it. Circulate the room and check each participant's build as they go. The most common mistakes: LED inserted backwards (check polarity before connecting battery), jumper wire in wrong row on breadboard, battery not making contact. <em>When a participant's LED lights up for the first time: acknowledge it. Pause. Say: "That is a complete electrical circuit that you built. The electrons are flowing through that wire in your hands right now." Do not rush past this moment. It is the emotional peak of Week 1.</em>`,
+
+  `<strong>Debrief is as important as the build.</strong> The circuit works — now participants need to understand why it works. Go through the flow diagram left to right. Ask questions rather than explaining: "Why did the resistor come before the LED and not after?" (It doesn't matter for function, but it is conventional and safe practice.) "What would happen if I removed the resistor now?" (The LED would receive all 9V with no limiting — likely burn out.) <em>The three explanation cards should be read by volunteers from the room, not by you. Pick three participants and ask them to read one each and explain it in their own words.</em>`,
+
+  `<strong>This experiment is Ohm's Law made visceral.</strong> Have participants write down their prediction before swapping the resistor: "Will the LED be brighter or dimmer with 1kΩ? By how much?" Then swap. The dimming is visible and immediate. Then ask: "Calculate the current with 1kΩ." They know V = 9V, R = 1000Ω. So I = 9/1000 = 9mA. Half of 19mA. Does it look half as bright? Roughly. <em>Optional extension for faster participants: ask them to calculate what resistor value would make the LED just barely visible (approximately 1–2mA). Answer: R = 9 / 0.002 = 4,500Ω — use a 4.7kΩ if available. This is experimental design emerging naturally from a 90-minute session.</em>`,
+
+  `<strong>Close with what they can now DO — not what they learned.</strong> Read each competency row and ask participants to tick it off mentally. Then say: "Two days ago, if someone asked you 'why is there a resistor in this circuit?' you would not have known. Now you do. Not because you read about it — because you built it." <em>Attendance: log before participants leave. Remind about covered shoes for tomorrow. Day 3 involves physical component sorting — tell them to expect to handle 20–25 different components and identify each one.</em>`
+];
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  const prev = cur;
+  setTimeout(() => slides[prev].classList.remove('out'), 600);
+  cur = n;
+  slides[cur].classList.add('active');
+  updateUI();
+}
+function go(dir) { const n = cur + dir; if (n >= 0 && n < TOTAL) goTo(n); }
+function updateUI() {
+  document.getElementById('slideNum').textContent = (cur+1)+' / '+TOTAL;
+  document.getElementById('topCount').textContent = String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('prevBtn').disabled = cur === 0;
+  document.getElementById('nextBtn').disabled = cur === TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i === cur));
+  document.getElementById('notesBody').innerHTML = NOTES[cur];
+}
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+  document.getElementById('notesBtn').textContent = notesOpen ? 'SPEAKER NOTES ↓' : 'SPEAKER NOTES ↑';
+}
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); go(1); }
+  if (['ArrowLeft','ArrowUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+  if (e.key==='n'||e.key==='N') toggleNotes();
+  if (e.key==='Escape') { notesOpen=false; document.getElementById('notesPanel').classList.remove('open'); document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑'; }
+});
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e => { cursorEl.style.left=e.clientX+'px'; cursorEl.style.top=e.clientY+'px'; });
+document.querySelectorAll('button,.trio-row,.comp-card,.f-card,.rc-card,.ex-card,.color-cell').forEach(el => {
+  el.addEventListener('mouseenter', () => cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave', () => cursorEl.classList.remove('big'));
+});
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); });
+updateUI();
+</script>
+</body>
+</html>
