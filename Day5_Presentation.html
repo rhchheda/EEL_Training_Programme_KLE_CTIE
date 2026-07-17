@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 5 — Multimeter | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #08111F;
+  --navy2:  #0D1C30;
+  --blue:   #1054A8;
+  --eblue:  #2563EB;
+  --lblue:  #60A5FA;
+  --xblue:  #93C5FD;
+  --gold:   #F5A623;
+  --green:  #00FF41;
+  --dgreen: #003B0F;
+  --white:  #FFFFFF;
+  --grey:   #6B7E96;
+  --lgrey:  #C8D4E0;
+  --red:    #EF4444;
+  --amber:  #F59E0B;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#04090F;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+/* ── CURSOR ── */
+.cursor{width:10px;height:10px;background:var(--lblue);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(96,165,250,.25);}
+
+/* ── ENGINE ── */
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+/* ── NAV ── */
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(37,99,235,.15);color:var(--lblue);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lblue);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+/* ── NOTES ── */
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lblue);border-color:rgba(37,99,235,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(37,99,235,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(37,99,235,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lblue);font-style:normal;}
+
+/* ── SHARED ── */
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-blue{background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.35);color:var(--lblue);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);color:var(--gold);}
+.tag-grn{background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.25);color:#4ADE80;}
+.tag-red{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#FCA5A5;}
+.tag-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#FCD34D;}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+
+/* LCD display style */
+.lcd{font-family:'DM Mono',monospace;background:var(--dgreen);border:2px solid rgba(0,255,65,.3);border-radius:6px;padding:8px 16px;color:var(--green);text-shadow:0 0 8px rgba(0,255,65,.6);display:inline-block;letter-spacing:2px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+@keyframes probe-trace{from{stroke-dashoffset:200;}to{stroke-dashoffset:0;}}
+
+/* ══════════════════════════
+   SLIDE 1 — OPENING
+══════════════════════════ */
+#s1{background:var(--navy);}
+#s1 .ga{width:500px;height:500px;top:-150px;right:-100px;background:radial-gradient(circle,rgba(37,99,235,.2),transparent 65%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lblue),var(--eblue),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lblue);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lblue);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,76px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lblue);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:32px;font-weight:300;}
+#s1 .recap-q{padding:16px 20px;background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-left:3px solid var(--eblue);border-radius:0 6px 6px 0;max-width:540px;}
+#s1 .rq-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:2px;margin-bottom:6px;}
+#s1 .rq-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══════════════════════════
+   SLIDE 2 — MEET THE MULTIMETER
+══════════════════════════ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(37,99,235,.12),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:44px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lblue);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:24px;}
+#s2 .parts{display:flex;flex-direction:column;gap:10px;}
+#s2 .part-row{display:flex;gap:12px;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;align-items:flex-start;transition:all .2s;cursor:pointer;}
+#s2 .part-row:hover{border-color:rgba(96,165,250,.3);background:rgba(37,99,235,.06);}
+#s2 .pr-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+#s2 .pr-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s2 .pr-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s2 .right{padding:40px 44px;display:flex;align-items:center;justify-content:center;}
+
+/* ══════════════════════════
+   SLIDE 3 — THE DIAL DECODED
+══════════════════════════ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(37,99,235,.1),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:48px;align-items:center;}
+#s3 .left{width:360px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+#s3 .right{flex:1;display:flex;flex-direction:column;gap:10px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s3 .sub{font-size:13px;color:var(--grey);margin-bottom:16px;}
+#s3 .setting-card{display:flex;gap:12px;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;align-items:flex-start;transition:all .2s;}
+#s3 .setting-card:hover{border-color:rgba(96,165,250,.3);background:rgba(37,99,235,.05);}
+#s3 .sc-sym{font-family:'DM Mono',monospace;font-size:16px;font-weight:700;min-width:52px;flex-shrink:0;line-height:1.2;}
+#s3 .sc-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s3 .sc-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s3 .sc-use{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;display:inline-block;margin-top:3px;width:fit-content;}
+
+/* ══════════════════════════
+   SLIDE 4 — TASK 1 DC VOLTAGE
+══════════════════════════ */
+#s4{background:radial-gradient(ellipse at 20% 50%,#0D1C30,#08111F);}
+#s4 .ga{width:600px;height:500px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(37,99,235,.15),transparent 55%);}
+#s4 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s4 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s4 .right{width:340px;flex-shrink:0;}
+#s4 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:8px;}
+#s4 h2 span{color:var(--lblue);}
+#s4 .task-intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:20px;}
+#s4 .steps{display:flex;flex-direction:column;gap:10px;}
+#s4 .step{display:flex;gap:14px;align-items:flex-start;}
+#s4 .sn{width:28px;height:28px;background:var(--eblue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+#s4 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s4 .st span{color:var(--lblue);font-weight:600;}
+/* Result panel */
+#s4 .result-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;align-items:center;}
+#s4 .rp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:2px;}
+#s4 .lcd-big{font-family:'DM Mono',monospace;font-size:52px;font-weight:400;background:var(--dgreen);border:2px solid rgba(0,255,65,.3);border-radius:8px;padding:10px 20px;color:var(--green);text-shadow:0 0 12px rgba(0,255,65,.7);letter-spacing:4px;line-height:1;}
+#s4 .rp-note{font-size:12px;color:var(--grey);text-align:center;line-height:1.5;}
+/* Probe connection diagram */
+#s4 .probe-diagram{width:100%;display:flex;flex-direction:column;gap:8px;}
+#s4 .probe-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;}
+#s4 .probe-row.red{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);}
+#s4 .probe-row.blk{background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.2);}
+#s4 .probe-color{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+#s4 .probe-text{font-size:12px;color:#C8D8E8;}
+
+/* ══════════════════════════
+   SLIDE 5 — TASK 2 RESISTANCE
+══════════════════════════ */
+#s5{background:var(--navy2);}
+#s5 .ga{width:500px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s5 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s5 .left{flex:1;}
+#s5 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s5 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s5 h2 em{color:var(--gold);font-style:italic;}
+#s5 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:18px;}
+#s5 .steps{display:flex;flex-direction:column;gap:10px;}
+#s5 .step{display:flex;gap:14px;align-items:flex-start;}
+#s5 .sn{width:28px;height:28px;background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0;margin-top:1px;}
+#s5 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s5 .st span{color:var(--gold);font-weight:600;}
+/* Live comparison table */
+#s5 .compare-table{display:flex;flex-direction:column;gap:6px;}
+#s5 .ct-header{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 12px;background:rgba(37,99,235,.15);border-radius:6px 6px 0 0;}
+#s5 .ct-hcell{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;}
+#s5 .ct-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:all .2s;}
+#s5 .ct-row:hover{background:rgba(245,166,35,.05);border-color:rgba(245,166,35,.2);}
+#s5 .ct-cell{font-size:12px;color:#C8D8E8;}
+#s5 .ct-cell.mono{font-family:'DM Mono',monospace;color:var(--gold);}
+#s5 .tip-box{padding:12px 16px;background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-radius:8px;}
+#s5 .tb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;margin-bottom:5px;}
+#s5 .tb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════
+   SLIDE 6 — TASK 3 CONTINUITY
+══════════════════════════ */
+#s6{background:var(--navy);}
+#s6 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(0,255,65,.06),transparent 60%);}
+#s6 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s6 .left{flex:1;}
+#s6 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s6 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s6 h2 em{color:#4ADE80;font-style:italic;}
+#s6 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:18px;}
+#s6 .steps{display:flex;flex-direction:column;gap:10px;}
+#s6 .step{display:flex;gap:14px;align-items:flex-start;}
+#s6 .sn{width:28px;height:28px;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#4ADE80;flex-shrink:0;margin-top:1px;}
+#s6 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s6 .st span{color:#4ADE80;font-weight:600;}
+/* Continuity scenarios */
+#s6 .scenarios{display:flex;flex-direction:column;gap:10px;}
+#s6 .sc-card{padding:14px 16px;border-radius:8px;display:flex;gap:14px;align-items:flex-start;}
+#s6 .sc-card.pass{background:rgba(0,255,65,.05);border:1px solid rgba(0,255,65,.2);}
+#s6 .sc-card.fail{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);}
+#s6 .sc-result{font-family:'DM Mono',monospace;font-size:22px;flex-shrink:0;min-width:40px;line-height:1;margin-top:2px;}
+#s6 .sc-card.pass .sc-result{color:#4ADE80;}
+#s6 .sc-card.fail .sc-result{color:#FCA5A5;}
+#s6 .sc-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s6 .sc-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+/* Beep animation */
+#s6 .beep-demo{padding:14px 16px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.2);border-radius:8px;text-align:center;}
+#s6 .beep-label{font-family:'DM Mono',monospace;font-size:10px;color:#4ADE80;letter-spacing:2px;margin-bottom:8px;}
+#s6 .beep-wave{display:flex;align-items:flex-end;justify-content:center;gap:3px;height:32px;}
+#s6 .beep-bar{width:6px;background:#4ADE80;border-radius:2px;animation:beepBar 1.2s ease-in-out infinite;}
+#s6 .beep-bar:nth-child(1){height:12px;animation-delay:.0s;}
+#s6 .beep-bar:nth-child(2){height:22px;animation-delay:.1s;}
+#s6 .beep-bar:nth-child(3){height:30px;animation-delay:.2s;}
+#s6 .beep-bar:nth-child(4){height:22px;animation-delay:.3s;}
+#s6 .beep-bar:nth-child(5){height:12px;animation-delay:.4s;}
+#s6 .beep-bar:nth-child(6){height:6px;animation-delay:.5s;}
+@keyframes beepBar{0%,100%{opacity:.3;}50%{opacity:1;}}
+
+/* ══════════════════════════
+   SLIDE 7 — TASK 4 AC VOLTAGE
+══════════════════════════ */
+#s7{background:#0A0808;}
+#s7 .ga{width:600px;height:500px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(239,68,68,.1),transparent 55%);}
+#s7 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s7 .left{flex:1;}
+#s7 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s7 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s7 h2 em{color:#FCA5A5;font-style:italic;}
+#s7 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s7 .never-box{padding:14px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-left:3px solid var(--red);border-radius:0 6px 6px 0;margin-bottom:14px;}
+#s7 .nb-label{font-family:'DM Mono',monospace;font-size:10px;color:#FCA5A5;letter-spacing:1px;margin-bottom:5px;}
+#s7 .nb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s7 .know-list{display:flex;flex-direction:column;gap:8px;}
+#s7 .kl-row{display:flex;gap:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;align-items:flex-start;}
+#s7 .kl-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+#s7 .kl-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s7 .kl-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+/* AC waveform SVG panel */
+#s7 .wave-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;}
+#s7 .wp-label{font-family:'DM Mono',monospace;font-size:10px;color:#FCA5A5;letter-spacing:2px;margin-bottom:10px;}
+
+/* ══════════════════════════
+   SLIDE 8 — VERIFY DAY 4 PLUG
+══════════════════════════ */
+#s8{background:var(--navy2);}
+#s8 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(37,99,235,.1),transparent 60%);}
+#s8 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s8 .left{flex:1;}
+#s8 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s8 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s8 h2 span{color:var(--lblue);}
+#s8 .bridge{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s8 .test-rows{display:flex;flex-direction:column;gap:8px;}
+#s8 .tr{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;cursor:pointer;transition:all .2s;}
+#s8 .tr:hover{border-color:rgba(96,165,250,.3);background:rgba(37,99,235,.05);}
+#s8 .tr.passed{border-color:rgba(0,255,65,.3);background:rgba(0,255,65,.05);}
+#s8 .tr.passed .tr-status{color:#4ADE80;}
+#s8 .tr-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;min-width:32px;}
+#s8 .tr-test{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s8 .tr-how{font-size:12px;color:var(--grey);line-height:1.4;}
+#s8 .tr-status{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);margin-left:auto;flex-shrink:0;padding-top:2px;}
+#s8 .result-guide{padding:12px 16px;background:rgba(0,255,65,.06);border:1px solid rgba(0,255,65,.2);border-radius:8px;}
+#s8 .rg-label{font-family:'DM Mono',monospace;font-size:10px;color:#4ADE80;letter-spacing:1px;margin-bottom:8px;}
+#s8 .rg-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:5px;font-size:12px;color:#C8D8E8;}
+#s8 .rg-row span{color:#4ADE80;font-weight:600;flex-shrink:0;}
+#s8 .warn-note{padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:6px;font-size:12px;color:#FCA5A5;}
+
+/* ══════════════════════════
+   SLIDE 9 — READING THE DISPLAY
+══════════════════════════ */
+#s9{background:var(--navy);}
+#s9 .ga{width:500px;height:400px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(37,99,235,.1),transparent 60%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s9 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s9 .display-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s9 .disp-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px 16px;display:flex;flex-direction:column;gap:10px;transition:all .2s;}
+#s9 .disp-card:hover{border-color:rgba(96,165,250,.3);background:rgba(37,99,235,.05);}
+#s9 .dc-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;}
+#s9 .dc-lcd{font-family:'DM Mono',monospace;background:var(--dgreen);border:1px solid rgba(0,255,65,.3);border-radius:5px;padding:6px 12px;color:var(--green);text-shadow:0 0 8px rgba(0,255,65,.5);font-size:22px;letter-spacing:2px;display:inline-block;}
+#s9 .dc-meaning{font-size:13px;font-weight:600;color:var(--white);margin-top:2px;}
+#s9 .dc-detail{font-size:12px;color:var(--grey);line-height:1.5;}
+
+/* ══════════════════════════
+   SLIDE 10 — COMMON MISTAKES
+══════════════════════════ */
+#s10{background:var(--navy2);}
+#s10 .ga{width:400px;height:400px;top:-80px;right:-60px;background:radial-gradient(circle,rgba(239,68,68,.08),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s10 .sub{font-size:14px;color:var(--grey);margin-bottom:20px;}
+#s10 .mistake-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1;}
+#s10 .mk-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px 14px;display:flex;flex-direction:column;gap:8px;transition:all .2s;}
+#s10 .mk-card:hover{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04);}
+#s10 .mk-icon{font-size:24px;}
+#s10 .mk-title{font-size:13px;font-weight:600;color:var(--white);}
+#s10 .mk-wrong{font-size:12px;color:#FCA5A5;line-height:1.5;margin-bottom:3px;}
+#s10 .mk-right{font-size:12px;color:#86EFAC;line-height:1.5;}
+
+/* ══════════════════════════
+   SLIDE 11 — CLOSING
+══════════════════════════ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1C30,#08111F);}
+#s11 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(37,99,235,.14),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(245,166,35,.07),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lblue),var(--eblue),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lblue);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lblue);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,56px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lblue);font-style:italic;}
+#s11 .can-do{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+#s11 .cd-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8;}
+#s11 .cd-check{width:20px;height:20px;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lblue);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;}
+#s11 .tomorrow-box strong{color:var(--lblue);}
+#s11 .week-badge{margin-top:16px;padding:12px 20px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:8px;font-size:14px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:1px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════
+     SLIDE 1 — OPENING
+══════════════════════════ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 5 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au">The <em>Multimeter</em><br>— Your Most<br>Important Tool</h1>
+    <p class="sub au">One instrument. Four measurements. Today you master it &mdash; and use it to verify the plug top you wired yesterday.</p>
+    <div class="recap-q au">
+      <div class="rq-label">DAY 4 RECALL &mdash; 30 SECONDS</div>
+      <div class="rq-text">Name the three wires in a 3-pin plug by colour and their terminal letter. Then name the one thing that happens if a fuse blows repeatedly and you fit a higher-rated one.</div>
+    </div>
+  </div>
+  <div class="inst au">
+    <p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p>
+    <p>KLE TECHNOLOGICAL UNIVERSITY</p>
+    <p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 2 — MEET THE MULTIMETER
+══════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-blue">THE INSTRUMENT</span></div>
+      <h2 class="au">Meet the<br><span>Multimeter</span></h2>
+      <p class="intro au">A multimeter is a diagnostic tool that measures electrical quantities. Think of it as a doctor&rsquo;s stethoscope for circuits. It tells you what is actually happening inside a wire or component &mdash; things your senses alone cannot detect.</p>
+      <div class="parts">
+        <div class="part-row au"><div class="pr-dot" style="background:#4ADE80;"></div><div><div class="pr-name">Digital Display</div><div class="pr-desc">Shows the measured value. The green LCD-style readout. Also shows OL (overload) and polarity signs.</div></div></div>
+        <div class="part-row au"><div class="pr-dot" style="background:var(--lblue);"></div><div><div class="pr-name">Rotary Dial</div><div class="pr-desc">Selects what you are measuring — DC voltage, AC voltage, resistance, continuity. Rotate to the correct position before connecting probes.</div></div></div>
+        <div class="part-row au"><div class="pr-dot" style="background:#EF4444;"></div><div><div class="pr-name">Red Probe Socket (V/Ω)</div><div class="pr-desc">The positive input. Red probe always goes here for voltage and resistance measurements.</div></div></div>
+        <div class="part-row au"><div class="pr-dot" style="background:#6B7E96;"></div><div><div class="pr-name">Black Probe Socket (COM)</div><div class="pr-desc">The common ground input. Black probe always goes here. COM = Common = Reference point = 0V.</div></div></div>
+        <div class="part-row au"><div class="pr-dot" style="background:#F59E0B;"></div><div><div class="pr-name">10A Socket</div><div class="pr-desc">Used only for measuring currents above 200mA. Move the red probe here for high-current measurements. We do not use this today.</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Multimeter SVG -->
+      <svg viewBox="0 0 260 380" fill="none" xmlns="http://www.w3.org/2000/svg" width="90%">
+        <!-- Body -->
+        <rect x="30" y="10" width="200" height="340" rx="18" fill="rgba(20,30,50,0.95)" stroke="rgba(96,165,250,0.3)" stroke-width="1.5"/>
+        <!-- Display -->
+        <rect x="50" y="28" width="160" height="70" rx="8" fill="var(--dgreen)" stroke="rgba(0,255,65,0.4)" stroke-width="1.5"/>
+        <text x="130" y="73" text-anchor="middle" font-family="DM Mono,monospace" font-size="32" font-weight="400" fill="#00FF41" style="text-shadow:0 0 10px #00FF41;">8.92</text>
+        <text x="54" y="46" font-family="DM Mono,monospace" font-size="8" fill="rgba(0,255,65,0.5)">DCV</text>
+        <!-- Dial -->
+        <circle cx="130" cy="190" r="52" fill="rgba(10,20,40,0.8)" stroke="rgba(96,165,250,0.25)" stroke-width="1.5"/>
+        <circle cx="130" cy="190" r="12" fill="rgba(96,165,250,0.3)" stroke="rgba(96,165,250,0.6)" stroke-width="1.5"/>
+        <!-- Dial markings -->
+        <text x="130" y="148" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#60A5FA">DCV</text>
+        <text x="170" y="165" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#FCA5A5">ACV</text>
+        <text x="178" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#F5A623">Ω</text>
+        <text x="170" y="232" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4ADE80">&#x21E5;</text>
+        <text x="90" y="232" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4ADE80">)))  </text>
+        <text x="82" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#C8D4E0">OFF</text>
+        <!-- Pointer -->
+        <line x1="130" y1="190" x2="130" y2="148" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>
+        <!-- Probe sockets -->
+        <circle cx="90"  cy="310" r="10" fill="rgba(239,68,68,0.25)"  stroke="rgba(239,68,68,0.7)"  stroke-width="1.5"/>
+        <circle cx="130" cy="310" r="10" fill="rgba(100,116,139,0.2)" stroke="rgba(100,116,139,0.5)" stroke-width="1.5"/>
+        <circle cx="170" cy="310" r="10" fill="rgba(245,158,11,0.2)"  stroke="rgba(245,158,11,0.5)"  stroke-width="1.5"/>
+        <text x="90"  y="333" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#EF4444">V/Ω</text>
+        <text x="130" y="333" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#6B7E96">COM</text>
+        <text x="170" y="333" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#F59E0B">10A</text>
+        <!-- Probe lines -->
+        <line x1="90"  y1="320" x2="60"  y2="360" stroke="#EF4444"   stroke-width="2" stroke-linecap="round"/>
+        <line x1="130" y1="320" x2="100" y2="360" stroke="#6B7E96"   stroke-width="2" stroke-linecap="round"/>
+        <circle cx="60"  cy="362" r="4" fill="#EF4444"/>
+        <circle cx="100" cy="362" r="4" fill="#6B7E96"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 3 — DIAL DECODED
+══════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <!-- Large dial SVG -->
+      <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg" width="320px">
+        <circle cx="150" cy="150" r="130" fill="rgba(10,20,40,0.9)" stroke="rgba(96,165,250,0.2)" stroke-width="2"/>
+        <circle cx="150" cy="150" r="100" fill="none" stroke="rgba(96,165,250,0.08)" stroke-width="1"/>
+        <!-- OFF -->
+        <text x="150" y="58" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="rgba(200,212,224,0.5)">OFF</text>
+        <!-- DCV arc -->
+        <path d="M 70,85 A 90,90 0 0,1 230,85" fill="none" stroke="rgba(96,165,250,0.3)" stroke-width="18" stroke-linecap="round"/>
+        <text x="150" y="80" text-anchor="middle" font-family="DM Mono,monospace" font-size="12" fill="#60A5FA" font-weight="700">DCV</text>
+        <!-- ACV arc -->
+        <path d="M 230,90 A 90,90 0 0,1 260,155" fill="none" stroke="rgba(239,68,68,0.25)" stroke-width="16" stroke-linecap="round"/>
+        <text x="258" y="128" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#FCA5A5">ACV</text>
+        <!-- Ohms -->
+        <path d="M 255,165 A 90,90 0 0,1 230,225" fill="none" stroke="rgba(245,166,35,0.25)" stroke-width="16" stroke-linecap="round"/>
+        <text x="258" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="#F5A623">&Omega;</text>
+        <!-- Continuity -->
+        <path d="M 220,240 A 90,90 0 0,1 150,265" fill="none" stroke="rgba(0,255,65,0.2)" stroke-width="16" stroke-linecap="round"/>
+        <text x="195" y="260" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#4ADE80">)))</text>
+        <!-- Diode -->
+        <path d="M 148,265 A 90,90 0 0,1 80,240" fill="none" stroke="rgba(245,158,11,0.2)" stroke-width="14" stroke-linecap="round"/>
+        <text x="105" y="262" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#FCD34D">&#x25B7;|</text>
+        <!-- DCA -->
+        <path d="M 45,220 A 90,90 0 0,1 40,155" fill="none" stroke="rgba(37,99,235,0.2)" stroke-width="14" stroke-linecap="round"/>
+        <text x="40" y="195" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#7FB5FF">DCA</text>
+        <!-- Centre knob -->
+        <circle cx="150" cy="150" r="22" fill="rgba(37,99,235,0.2)" stroke="rgba(96,165,250,0.5)" stroke-width="2"/>
+        <circle cx="150" cy="150" r="8" fill="#60A5FA"/>
+        <!-- Pointer -->
+        <line x1="150" y1="150" x2="150" y2="60" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>
+        <polygon points="150,50 145,64 155,64" fill="#60A5FA"/>
+      </svg>
+    </div>
+    <div class="right">
+      <div class="au"><span class="tag tag-blue">DIAL SETTINGS — DECODED</span></div>
+      <h2 class="au">The Dial</h2>
+      <p class="sub au">Rotate to the correct setting before connecting probes. Never change the dial while probes are connected to a live circuit.</p>
+      <div class="setting-card au"><div class="sc-sym" style="color:#60A5FA;">DCV</div><div><div class="sc-name">Direct Current Voltage</div><div class="sc-desc">Batteries, DC power supplies, phone chargers output side. Use for all low-voltage work in this programme.</div><span class="sc-use" style="background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.3);color:#93C5FD;">USED TODAY</span></div></div>
+      <div class="setting-card au"><div class="sc-sym" style="color:#F5A623;">&Omega;</div><div><div class="sc-name">Resistance (Ohms)</div><div class="sc-desc">Measure resistor values. Verify connections. Never use on a live circuit — power must be off.</div><span class="sc-use" style="background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:#FCD34D;">USED TODAY</span></div></div>
+      <div class="setting-card au"><div class="sc-sym" style="color:#4ADE80;">)))</div><div><div class="sc-name">Continuity / Beep Mode</div><div class="sc-desc">Tests if a path is complete. Meter beeps when circuit is unbroken. Best fault-finding tool you have.</div><span class="sc-use" style="background:rgba(0,255,65,.08);border:1px solid rgba(0,255,65,.25);color:#4ADE80;">USED TODAY</span></div></div>
+      <div class="setting-card au"><div class="sc-sym" style="color:#FCA5A5;">ACV</div><div><div class="sc-name">AC Voltage</div><div class="sc-desc">Mains supply — 230V in India. Theory only in this programme. Never connect to live mains without training.</div><span class="sc-use" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#FCA5A5;">THEORY ONLY</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 4 — TASK 1: DC VOLTAGE
+══════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-blue">TASK 1 OF 4</span></div>
+      <h2 class="au">Measure<br><span>DC Voltage</span></h2>
+      <p class="task-intro au">Measuring the voltage of your 9V battery. This is the most fundamental measurement in electronics. Every session from here uses this skill.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Rotate the dial to <span>DCV</span>. Select a range above 9V &mdash; use 20V if available, or the next range up.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Insert the <span>red probe</span> into the V/&Omega; socket. Insert the <span>black probe</span> into the COM socket.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Touch the <span>red probe tip</span> to the + (positive) terminal of the 9V battery.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Touch the <span>black probe tip</span> to the &minus; (negative) terminal of the battery at the same time.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st">Read the display. You should see approximately <span>8.5V&ndash;9.2V</span> depending on battery charge.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st">Now swap the probes. The display shows a <span>negative value</span> &mdash; confirming polarity. Both readings are correct.</div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="result-panel">
+        <div class="rp-label">EXPECTED DISPLAY</div>
+        <div class="lcd-big" id="voltDisplay">9.12</div>
+        <div class="probe-diagram">
+          <div class="probe-row red">
+            <div class="probe-color" style="background:#EF4444;"></div>
+            <div class="probe-text"><strong style="color:#FCA5A5;">RED probe</strong> &rarr; V/&Omega; socket &rarr; Battery + terminal</div>
+          </div>
+          <div class="probe-row blk">
+            <div class="probe-color" style="background:#6B7E96;"></div>
+            <div class="probe-text"><strong style="color:#94A3B8;">BLACK probe</strong> &rarr; COM socket &rarr; Battery &minus; terminal</div>
+          </div>
+        </div>
+        <!-- Animated circuit trace -->
+        <svg viewBox="0 0 280 120" fill="none" width="100%">
+          <rect x="10" y="30" width="52" height="60" rx="8" fill="rgba(234,179,8,0.12)" stroke="rgba(234,179,8,0.4)" stroke-width="1.5"/>
+          <text x="36" y="65" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="16" font-weight="700" fill="#EAB308">9V</text>
+          <text x="42" y="28" font-family="DM Mono,monospace" font-size="10" fill="#EAB308">+</text>
+          <text x="42" y="98" font-family="DM Mono,monospace" font-size="10" fill="#6B7E96">&minus;</text>
+          <!-- Red probe trace -->
+          <line x1="62" y1="40" x2="220" y2="40" stroke="#EF4444" stroke-width="2" stroke-dasharray="200" stroke-dashoffset="200" style="animation:probe-trace 1.2s ease .3s forwards"/>
+          <!-- Black probe trace -->
+          <line x1="62" y1="82" x2="220" y2="82" stroke="#6B7E96" stroke-width="2" stroke-dasharray="200" stroke-dashoffset="200" style="animation:probe-trace 1.2s ease .6s forwards"/>
+          <!-- Multimeter box -->
+          <rect x="220" y="24" width="50" height="72" rx="6" fill="rgba(37,99,235,0.12)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+          <circle cx="235" cy="64" r="5" fill="rgba(239,68,68,0.4)" stroke="#EF4444" stroke-width="1"/>
+          <circle cx="255" cy="64" r="5" fill="rgba(100,116,139,0.4)" stroke="#6B7E96" stroke-width="1"/>
+          <text x="245" y="44" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4ADE80">DMM</text>
+        </svg>
+        <div class="rp-note">If the display shows a negative value, your probes are reversed. Swap them for a positive reading.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 5 — TASK 2: RESISTANCE
+══════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">TASK 2 OF 4</span></div>
+      <h2 class="au">Measure<br><em>Resistance</em></h2>
+      <p class="def au">Measuring resistance confirms the value of a resistor and verifies connections in a de-energised circuit. It is also used to check if a component is open-circuit (broken) or short-circuit (conducting when it should not).</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Rotate the dial to <span>&Omega;</span>. Select a range higher than the expected resistance.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Ensure the component is <span>not in a live circuit</span>. Hold the resistor between your fingers &mdash; not touching both probe tips simultaneously.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Touch one probe tip to each leg of the resistor. Polarity does not matter for resistance.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Read the display. Compare to the <span>colour code value</span>. Tolerance of &plusmn;5% is normal.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="compare-table au">
+        <div class="ct-header">
+          <span class="ct-hcell">RESISTOR</span>
+          <span class="ct-hcell">EXPECTED</span>
+          <span class="ct-hcell">TYPICAL READING</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-cell">Yellow-Violet-Brown</span>
+          <span class="ct-cell mono">470&Omega;</span>
+          <span class="ct-cell mono">448&ndash;494&Omega;</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-cell">Brown-Black-Red</span>
+          <span class="ct-cell mono">1k&Omega;</span>
+          <span class="ct-cell mono">950&ndash;1050&Omega;</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-cell">Brown-Black-Orange</span>
+          <span class="ct-cell mono">10k&Omega;</span>
+          <span class="ct-cell mono">9.5k&ndash;10.5k&Omega;</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-cell">Brown-Black-Yellow</span>
+          <span class="ct-cell mono">100k&Omega;</span>
+          <span class="ct-cell mono">95k&ndash;105k&Omega;</span>
+        </div>
+      </div>
+      <div class="tip-box au">
+        <div class="tb-label">WHY YOUR BODY AFFECTS THE READING</div>
+        <div class="tb-text">If you hold both probe tips with your bare fingers, your body resistance (typically 10k&ndash;100k&Omega;) creates a parallel path and skews the reading. Always hold the resistor body, not the probe tips, during measurement.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px;">OPEN CIRCUIT VS SHORT</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">OL on display = open circuit (infinite resistance, broken wire or component). 0.0&Omega; = short circuit (the two points are directly connected with no resistance).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 6 — TASK 3: CONTINUITY
+══════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-grn">TASK 3 OF 4</span></div>
+      <h2 class="au">The <em>Continuity</em><br>Test</h2>
+      <p class="def au">Continuity mode is the fastest and most used fault-finding tool in the multimeter. Set the dial to the beep symbol and touch the probes to two points &mdash; if the path between them is complete, the meter beeps. If silent, there is a break.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Rotate dial to the <span>beep/continuity symbol</span> (&mdash; usually a diode symbol with sound waves, or ))).</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Touch the two probe tips <span>together</span>. The meter should beep immediately &mdash; confirming it is working.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Now test a complete wire &mdash; touch one probe to each end. <span>Beep = wire is good</span>. Silence = broken wire.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Test a fuse &mdash; place probes on each end cap. <span>Beep = fuse intact</span>. Silence = blown fuse.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="beep-demo au">
+        <div class="beep-label">CONTINUITY BEEP</div>
+        <div class="beep-wave">
+          <div class="beep-bar"></div><div class="beep-bar"></div>
+          <div class="beep-bar"></div><div class="beep-bar"></div>
+          <div class="beep-bar"></div><div class="beep-bar"></div>
+        </div>
+      </div>
+      <div class="scenarios">
+        <div class="sc-card pass au">
+          <div class="sc-result">&#x266A;</div>
+          <div>
+            <div class="sc-title">BEEP &mdash; Circuit Complete</div>
+            <div class="sc-desc">Current can flow between the two probe points. The wire or connection is intact. No break detected.</div>
+          </div>
+        </div>
+        <div class="sc-card fail au">
+          <div class="sc-result">&#x2014;</div>
+          <div>
+            <div class="sc-title">SILENCE &mdash; Open Circuit</div>
+            <div class="sc-desc">No current path exists between the probes. The wire is broken, the fuse is blown, or the connection is incomplete.</div>
+          </div>
+        </div>
+        <div class="sc-card pass au">
+          <div class="sc-result">&#x2714;</div>
+          <div>
+            <div class="sc-title">What you can test today</div>
+            <div class="sc-desc">Wire continuity &bull; Fuse integrity &bull; Switch function &bull; PCB track continuity &bull; Your Day 4 plug terminals (Slide 8)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 7 — TASK 4: AC VOLTAGE
+══════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">TASK 4 OF 4 &mdash; THEORY ONLY</span></div>
+      <h2 class="au"><em>AC Voltage</em><br>— Know it.<br>Never touch it.</h2>
+      <p class="def au">Your multimeter can measure 230V AC mains voltage. But in this programme, we do not do this. You need to know what the setting is, what it reads, and why it exists &mdash; so you can recognise it and avoid accidentally selecting it.</p>
+      <div class="never-box au">
+        <div class="nb-label">NON-NEGOTIABLE</div>
+        <div class="nb-text">Never connect probes to a live 230V mains socket unless you are a licensed electrician with the correct PPE, training, and authorisation. A single touch of a live terminal can cause cardiac arrest. The multimeter can read it &mdash; that does not mean you should.</div>
+      </div>
+      <div class="know-list">
+        <div class="kl-row au"><div class="kl-icon">&#x1F4CB;</div><div><div class="kl-title">ACV setting on the dial</div><div class="kl-desc">Usually labelled ACV or V&sim;. Select a range above 230V (e.g. 600V or 750V) to measure Indian mains.</div></div></div>
+        <div class="kl-row au"><div class="kl-icon">&#x1F4CA;</div><div><div class="kl-title">What a correct reading looks like</div><div class="kl-desc">Indian mains: 220&ndash;240V AC. A healthy socket reads approximately 230V. Significant deviation indicates a supply problem.</div></div></div>
+        <div class="kl-row au"><div class="kl-icon">&#x26A0;</div><div><div class="kl-title">Why it matters to you</div><div class="kl-desc">A qualified electrician uses this to verify that a socket is live before working near it. After Day 10, you will know when to call one &mdash; and why.</div></div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="wave-panel">
+        <div class="wp-label">230V AC WAVEFORM &mdash; 50Hz</div>
+        <svg viewBox="0 0 280 140" fill="none" width="100%">
+          <line x1="10" y1="70" x2="270" y2="70" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+          <line x1="10" y1="20" x2="10" y2="120" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+          <!-- Sine wave -->
+          <path d="M10,70 Q32,10 54,70 Q76,130 98,70 Q120,10 142,70 Q164,130 186,70 Q208,10 230,70 Q252,130 274,70" stroke="#FCA5A5" stroke-width="2" fill="none"/>
+          <!-- Labels -->
+          <text x="14" y="26" font-family="DM Mono,monospace" font-size="9" fill="rgba(252,165,165,0.6)">+230V</text>
+          <text x="14" y="118" font-family="DM Mono,monospace" font-size="9" fill="rgba(252,165,165,0.6)">&minus;230V</text>
+          <text x="54" y="84" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)" text-anchor="middle">20ms / cycle</text>
+          <text x="140" y="135" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,0.2)" text-anchor="middle">50 Hz = 50 cycles per second</text>
+        </svg>
+      </div>
+      <!-- DC vs AC comparison -->
+      <div style="display:flex;flex-direction:column;gap:8px;" class="">
+        <div style="padding:12px 14px;background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.2);border-radius:7px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;margin-bottom:4px;">DC (YOUR 9V BATTERY)</div>
+          <div style="font-size:12px;color:#C8D8E8;">Constant, steady voltage. Flows in one direction. Safe to work with at low voltages in this lab.</div>
+        </div>
+        <div style="padding:12px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:7px;">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:#FCA5A5;letter-spacing:1px;margin-bottom:4px;">AC (YOUR WALL SOCKET)</div>
+          <div style="font-size:12px;color:#C8D8E8;">Alternates direction 50 times per second. 230V peak. Never handled directly in this programme.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 8 — VERIFY DAY 4 PLUG
+══════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-blue">LINKING DAY 4 &amp; DAY 5</span></div>
+      <h2 class="au">Verify Your<br>Day 4 <span>Plug Top</span></h2>
+      <p class="bridge au">You wired a plug top yesterday. Today you verify your own work using the multimeter. This is exactly how a professional electrician checks a newly wired installation before it goes live.</p>
+      <div class="test-rows" id="testRows">
+        <div class="tr au" onclick="passTr(this)">
+          <div class="tr-num">T1</div>
+          <div><div class="tr-test">Continuity: Live terminal to Live pin</div><div class="tr-how">Set to beep mode. Touch probes to the L terminal screw and the bottom-left pin. Expect: BEEP.</div></div>
+          <div class="tr-status">PENDING</div>
+        </div>
+        <div class="tr au" onclick="passTr(this)">
+          <div class="tr-num">T2</div>
+          <div><div class="tr-test">Continuity: Neutral terminal to Neutral pin</div><div class="tr-how">Touch probes to N terminal and bottom-right pin. Expect: BEEP.</div></div>
+          <div class="tr-status">PENDING</div>
+        </div>
+        <div class="tr au" onclick="passTr(this)">
+          <div class="tr-num">T3</div>
+          <div><div class="tr-test">Continuity: Earth terminal to Earth pin</div><div class="tr-how">Touch probes to E terminal and top (longest) pin. Expect: BEEP.</div></div>
+          <div class="tr-status">PENDING</div>
+        </div>
+        <div class="tr au" onclick="passTr(this)">
+          <div class="tr-num">T4</div>
+          <div><div class="tr-test">Isolation: Live terminal to Neutral terminal</div><div class="tr-how">Touch probes to L terminal and N terminal. Expect: SILENCE (no beep &mdash; these must not be connected).</div></div>
+          <div class="tr-status">PENDING</div>
+        </div>
+        <div class="tr au" onclick="passTr(this)">
+          <div class="tr-num">T5</div>
+          <div><div class="tr-test">Fuse continuity</div><div class="tr-how">Remove the fuse from its holder. Touch probes to each end cap. Expect: BEEP (intact fuse). Silence = blown fuse.</div></div>
+          <div class="tr-status">PENDING</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="result-guide au">
+        <div class="rg-label">HOW TO INTERPRET RESULTS</div>
+        <div class="rg-row"><span>BEEP</span> on T1, T2, T3: Wires correctly connected to their terminals.</div>
+        <div class="rg-row"><span>SILENT</span> on T4: Live and Neutral are correctly isolated from each other.</div>
+        <div class="rg-row"><span>BEEP</span> on T5: Fuse is intact and conducting.</div>
+      </div>
+      <div class="warn-note au">If T1, T2 or T3 give SILENCE: your wire is not making contact at the terminal. Open the plug and re-tighten that terminal screw.</div>
+      <div class="warn-note au" style="margin-top:8px;">If T4 gives a BEEP: Live and Neutral are shorted inside your plug &mdash; open immediately and inspect. Do not connect this plug to any socket.</div>
+      <!-- Pass indicator -->
+      <div style="padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;margin-top:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lblue);letter-spacing:1px;margin-bottom:6px;">CLICK EACH TEST ROW WHEN PASSED</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;" id="passCount">0 / 5 tests passed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 9 — READING THE DISPLAY
+══════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-blue">DISPLAY LITERACY</span></div>
+    <h2 class="au">Reading What the Display Tells You</h2>
+    <p class="sub au">The display communicates more than just a number. These six readings each mean something specific.</p>
+    <div class="display-grid">
+      <div class="disp-card au">
+        <div class="dc-label">NORMAL READING</div>
+        <div class="dc-lcd">12.45</div>
+        <div class="dc-meaning">12.45 Volts DC</div>
+        <div class="dc-detail">A valid measurement within the selected range. The number is the value in the unit shown (V, &Omega;, A).</div>
+      </div>
+      <div class="disp-card au">
+        <div class="dc-label">OVERLOAD</div>
+        <div class="dc-lcd">OL</div>
+        <div class="dc-meaning">Over-range / Open circuit</div>
+        <div class="dc-detail">The value exceeds your selected range (switch to a higher range), or there is an open circuit (no connection or broken wire).</div>
+      </div>
+      <div class="disp-card au">
+        <div class="dc-label">NEGATIVE POLARITY</div>
+        <div class="dc-lcd">&minus;9.12</div>
+        <div class="dc-meaning">Probes reversed</div>
+        <div class="dc-detail">Red probe is on the negative terminal. Swap the probes for a positive reading. Not a fault &mdash; just reversed connection.</div>
+      </div>
+      <div class="disp-card au">
+        <div class="dc-label">NEAR ZERO</div>
+        <div class="dc-lcd">0.002</div>
+        <div class="dc-meaning">Near-zero resistance</div>
+        <div class="dc-detail">In resistance mode: almost zero ohms. Either a short circuit or a component with very low resistance (like a wire or closed switch).</div>
+      </div>
+      <div class="disp-card au">
+        <div class="dc-label">BATTERY LOW</div>
+        <div class="dc-lcd">BAT</div>
+        <div class="dc-meaning">Replace meter battery</div>
+        <div class="dc-detail">The internal battery of the multimeter is low. Readings may be inaccurate. Replace the battery before trusting measurements.</div>
+      </div>
+      <div class="disp-card au">
+        <div class="dc-label">CONTINUITY BEEP</div>
+        <div class="dc-lcd" style="animation:blink 1s step-end infinite;">))))</div>
+        <div class="dc-meaning">Path is complete</div>
+        <div class="dc-detail">In continuity mode: the circuit path between the two probe tips is unbroken. The meter both beeps and shows a low resistance value.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 10 — COMMON MISTAKES
+══════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-red">COMMON MISTAKES</span></div>
+    <h2 class="au">Six Errors &mdash; and How to Avoid Them</h2>
+    <p class="sub au">Every one of these has been made by someone in a lab. Learn them here so you do not learn them the hard way.</p>
+    <div class="mistake-grid">
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F50C;</div>
+        <div class="mk-title">Wrong probe socket</div>
+        <div class="mk-wrong">Red probe in 10A socket while measuring voltage. Meter reads incorrectly or blows the internal fuse.</div>
+        <div class="mk-right">Red probe always in V/&Omega; socket unless you are measuring currents above 200mA.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F504;</div>
+        <div class="mk-title">Wrong range selected</div>
+        <div class="mk-wrong">Measuring 9V DC with the dial set to 2V range &mdash; display shows OL. Or 200mV range &mdash; same result.</div>
+        <div class="mk-right">Always select a range higher than the expected value. If unsure, start at the highest range and work down.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x26A1;</div>
+        <div class="mk-title">Measuring resistance on a live circuit</div>
+        <div class="mk-wrong">Attempting to measure component resistance while the circuit is powered. Reading is meaningless and may damage the meter.</div>
+        <div class="mk-right">Always de-energise before resistance or continuity measurements. Power off, then measure.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F9E4;</div>
+        <div class="mk-title">Touching probe tips with bare fingers</div>
+        <div class="mk-wrong">Your body resistance (10k&ndash;100k&Omega;) creates a parallel path and gives incorrect resistance readings.</div>
+        <div class="mk-right">Hold the component body, not the metal probe tips. Use insulated probe handles.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F50B;</div>
+        <div class="mk-title">Forgetting to check meter battery</div>
+        <div class="mk-wrong">A weak internal battery gives slightly inaccurate readings &mdash; especially in resistance and continuity modes.</div>
+        <div class="mk-right">If readings seem inconsistent or the BAT indicator shows, replace the meter battery before relying on measurements.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F3AF;</div>
+        <div class="mk-title">ACV setting left on from previous use</div>
+        <div class="mk-wrong">Connecting to a DC battery with the dial still on ACV. Reading is often 0V or erratic &mdash; wasted time troubleshooting a healthy circuit.</div>
+        <div class="mk-right">Always check the dial position before connecting probes. Make it a habit: dial first, then probes.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     SLIDE 11 — CLOSING
+══════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 5 COMPLETE &nbsp;&middot;&nbsp; WEEK 1 DONE &nbsp;&middot;&nbsp; 5 SESSIONS TO GO</div>
+    <h2 class="au">You completed<br>Week 1. You can now<br>diagnose with <em>data</em><br>— not guesswork.</h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Measure DC voltage from any battery or DC supply</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Read resistance and verify colour code values</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Use continuity mode to find breaks in wires and test fuses</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Verify a wired plug top using five continuity tests</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Monday &mdash; Day 6:</strong> Soldering begins. You will pick up a soldering iron for the first time, learn the safety rules for hot tools, and make your first solder joint. Week 2 is where everything becomes permanent.
+    </div>
+    <div class="week-badge au">WEEK 1 COMPLETE &nbsp;&middot;&nbsp; FOUNDATIONS BUILT &nbsp;&middot;&nbsp; WEEK 2 STARTS MONDAY</div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL = 11;
+let cur = 0, notesOpen = false, passedTests = 0;
+
+const NOTES = [
+  `<strong>The Day 4 recall at the start is intentionally specific.</strong> Brown = Live, Blue = Neutral, Green/Yellow = Earth. If a fuse blows repeatedly and you fit a higher-rated one, you remove the circuit protection and allow the fault to cause damage or fire. Spend 3 minutes on this before advancing. <em>Then introduce the multimeter with a physical object in hand — hold it up and say: "This instrument will tell you things about a circuit that your eyes, hands, and ears cannot. By the end of today you will use it independently. That is the goal."</em>`,
+
+  `<strong>Name every part as you physically point to it on the real multimeter.</strong> Do not just show the SVG — hold the instrument up. "This is the display — it will show green numbers. This is the dial — this is what you rotate before connecting anything. These three holes at the bottom are where the probes go — black always goes into COM, red always goes into V/Ω for voltage and resistance." <em>The 10A socket needs explicit attention: "This hole exists for measuring high currents. We do not use it today. If your red probe ends up in here by mistake, your voltage and resistance readings will be completely wrong. I will check everyone's probe placement before each task."</em>`,
+
+  `<strong>The dial is where most confusion occurs — demystify it completely.</strong> Point to each marking and say what it is for in plain language. "DCV — batteries, DC power supplies, phone charger outputs. Ohms — measuring resistance, with power off. The beep symbol — your fault-finding superpower. ACV — mains voltage, which we only discuss today — never measure." <em>Ask participants to rotate their own dial to DCV and confirm everyone is on the correct setting before moving to Slide 4. This physical act of selecting the setting, before any measurement, becomes the habit you are building.</em>`,
+
+  `<strong>Demonstrate the measurement yourself first — both correct and reversed polarity.</strong> Show the display reading positive (correct probe orientation) then negative (reversed). Say: "A negative reading is not an error — it just means your probes are swapped. For voltage, polarity matters. For resistance and continuity, it does not." <em>Watch for two common errors during Task 1: probes in the wrong socket (check before starting), and participants selecting a range too low (e.g. 2V for a 9V battery gives OL — address this as a teaching moment rather than a failure).</em>`,
+
+  `<strong>The body resistance demonstration is memorable and should be done live.</strong> Ask a participant to hold both probe tips with their bare fingers while the meter is in resistance mode. Read the value — typically 50k–200kΩ depending on skin moisture. Then ask them to press firmly with both thumbs — the reading drops significantly with more contact area. "Your body is a conductor. Not a great one — but enough to affect measurements on high-value resistors." <em>Then have each participant measure the three resistors from their tray and compare to the colour code. This is a satisfying confirmation exercise that builds confidence.</em>`,
+
+  `<strong>The beep test is instantly satisfying — let participants experience it immediately.</strong> Before explaining anything, say: "Touch the two probe tips together." The beep sounds. Watch the reaction — participants always smile. "That is continuity. That beep means the path is complete." Then explain why it matters: "Every fault diagnosis starts with continuity. Is the wire intact? Beep or silence — that is your answer in less than a second." <em>Prepare the pre-broken wires before the session: take 4–6 lengths of wire and cut through the insulation of half of them from the inside (invisible from outside). These are the diagnostic challenge wires participants will test in Task 3.</em>`,
+
+  `<strong>This slide requires extra care in delivery.</strong> Some participants may be tempted to test their home sockets after the session. Preempt this directly: "Do not go home tonight and try to measure your wall socket. If you want to understand what 230V AC looks like, the waveform on this slide is what it looks like. That is enough for now." <em>The DC vs AC comparison cards at the bottom of the slide are the key takeaway — DC is what they have been working with all week, AC is what powers their building, and the difference in handling required is absolute. File this away — it will return on Day 9 scenario simulations.</em>`,
+
+  `<strong>This is the session's most powerful moment — closing the loop between Day 4 and Day 5.</strong> Say: "Yesterday you wired this plug top. Today you are going to test your own work with a professional instrument. This is exactly how an electrician verifies a new installation before it goes live." Have participants click each test row on the slide as they complete and pass it. <em>If a participant's T1, T2 or T3 test fails (silence when beep is expected): do not move on. Have them open the plug, identify the loose terminal, re-tighten, close, and retest. This real-world correction is the most valuable learning event in Week 1. It shows that the multimeter revealed something the eye could not see.</em>`,
+
+  `<strong>Walk through each display scenario with the actual multimeter.</strong> Show OL by measuring 9V on the 2V range. Show negative polarity by reversing the probes on the battery. Show near-zero by touching the probe tips together in resistance mode. Show the continuity beep on the beep/))) mode. <em>The BAT indicator is worth flagging: "If your meter shows BAT and you are getting weird readings, the meter needs a new battery — not the circuit. Always check the instrument before blaming the circuit."</em>`,
+
+  `<strong>Run the mistakes exercise as a confession session.</strong> After presenting each card, ask: "Has anyone already made this mistake today?" Creating a safe space to admit errors normalises the learning process. The most common one today will be the wrong probe socket or wrong range — address those specifically with anyone who experienced them. <em>The "dial first, then probes" habit on the last card is the most important behavioural outcome of Day 5. If every participant leaves with that habit, the session succeeded. Reinforce it: "Dial. Probes. Read. In that order. Every time."</em>`,
+
+  `<strong>Week 1 is complete — acknowledge this explicitly.</strong> Say: "Five days ago, most of you had never held a soldering iron, never opened a plug top, and could not have explained what a resistor does. Today you verified your own electrical work with a professional instrument. That is not a small thing." <em>The Week 2 preview deserves genuine enthusiasm — soldering is the skill participants are most curious and most nervous about. Reassure them: "Day 6 is the most hands-on session of the programme. You will be holding a tool that reaches 350°C. It sounds intimidating — but by the end of the session, you will have made your first solder joint, and it will be good." Give participants the weekend to rest. Remind them: Day 6 is Monday.</em>`
+];
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'dot'+(i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  const prev = cur;
+  setTimeout(() => slides[prev].classList.remove('out'), 600);
+  cur = n;
+  slides[cur].classList.add('active');
+  updateUI();
+}
+function go(dir) { const n = cur+dir; if(n>=0&&n<TOTAL) goTo(n); }
+function updateUI() {
+  document.getElementById('slideNum').textContent = (cur+1)+' / '+TOTAL;
+  document.getElementById('topCount').textContent = String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('prevBtn').disabled = cur===0;
+  document.getElementById('nextBtn').disabled = cur===TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  document.getElementById('notesBody').innerHTML = NOTES[cur];
+}
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open',notesOpen);
+  document.getElementById('notesBtn').textContent = notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';
+}
+
+// Plug test tracker
+function passTr(row) {
+  if (row.classList.contains('passed')) {
+    row.classList.remove('passed');
+    row.querySelector('.tr-status').textContent = 'PENDING';
+    passedTests = Math.max(0, passedTests - 1);
+  } else {
+    row.classList.add('passed');
+    row.querySelector('.tr-status').textContent = 'PASSED';
+    passedTests++;
+  }
+  const pc = document.getElementById('passCount');
+  if (pc) {
+    pc.textContent = passedTests + ' / 5 tests passed';
+    pc.style.color = passedTests === 5 ? '#4ADE80' : '#C8D8E8';
+  }
+}
+
+// Animate voltage display
+let voltVals = ['9.12','8.97','9.05','9.18','8.88','9.11'];
+let vi = 0;
+setInterval(() => {
+  const el = document.getElementById('voltDisplay');
+  if (el) { vi = (vi+1)%voltVals.length; el.textContent = voltVals[vi]; }
+}, 2200);
+
+document.addEventListener('keydown', e => {
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}
+});
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.part-row,.setting-card,.step,.sc-card,.disp-card,.mk-card,.ct-row,.tr,.kl-row').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
