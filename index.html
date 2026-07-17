@@ -34,6 +34,7 @@ body {
     radial-gradient(circle at 86% 8%, rgba(245,166,35,.16), transparent 28rem),
     linear-gradient(135deg, #04090F 0%, var(--navy) 44%, #0A0800 100%);
   overflow-x: hidden;
+  padding-bottom: 46px;
 }
 
 body::before {
@@ -69,6 +70,8 @@ body::before {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  color: var(--white);
+  text-decoration: none;
 }
 
 .mark {
@@ -90,12 +93,44 @@ body::before {
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
+  color: var(--white);
+  text-shadow: 0 0 18px rgba(245,166,35,.16);
 }
 
 .brand-sub {
   margin-top: 2px;
   color: var(--grey);
   font-size: 12px;
+}
+
+.made-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  background: rgba(4,9,15,.82);
+  backdrop-filter: blur(18px);
+  color: rgba(200,212,224,.72);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+
+.heart {
+  display: inline-block;
+  color: #EF4444;
+  font-size: 12px;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(239,68,68,.75);
+  animation: heartThrob 1.15s ease-in-out infinite;
 }
 
 .top-actions {
@@ -393,6 +428,13 @@ h2 {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes heartThrob {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  18% { transform: scale(1.28); filter: brightness(1.35); }
+  34% { transform: scale(.96); filter: brightness(.95); }
+  52% { transform: scale(1.16); filter: brightness(1.2); }
+}
+
 @media (max-width: 1060px) {
   .hero { grid-template-columns: 1fr; }
   .hero-panel { min-height: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -413,6 +455,7 @@ h2 {
   .day-grid { grid-template-columns: 1fr; }
   .modal { padding: 10px; }
   .modal-bar { align-items: flex-start; flex-direction: column; }
+  .made-footer { font-size: 9px; letter-spacing: .8px; }
 }
 </style>
 </head>
@@ -462,6 +505,8 @@ h2 {
     <div class="day-grid" id="dayGrid"></div>
   </section>
 </main>
+
+<footer class="made-footer">Made with <span class="heart" aria-label="love">♥</span> ~rhc · EE Lab, KLE-CTIE</footer>
 
 <div class="modal" id="previewModal" aria-hidden="true">
   <div class="modal-bar">
