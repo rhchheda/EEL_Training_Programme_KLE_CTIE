@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 8 — Desoldering & Rework | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#08111F;--navy2:#0D1C30;
+  --steel:#475569;--lsteel:#94A3B8;--xsteel:#CBD5E1;
+  --silver:#E2E8F0;--cool:#64748B;
+  --gold:#F5A623;--lgold:#FCD34D;
+  --white:#FFFFFF;--grey:#6B7E96;--lgrey:#C8D4E0;
+  --red:#DC2626;--lred:#FCA5A5;
+  --green:#15803D;--lgreen:#4ADE80;
+  --blue:#1054A8;--lblue:#60A5FA;
+  --flame:#EA580C;--lflame:#FB923C;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#060810;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+.cursor{width:10px;height:10px;background:var(--lsteel);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(148,163,184,.25);}
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(71,85,105,.2);color:var(--lsteel);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lsteel);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lsteel);border-color:rgba(71,85,105,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(71,85,105,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(71,85,105,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lsteel);font-style:normal;}
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-steel{background:rgba(71,85,105,.2);border:1px solid rgba(71,85,105,.4);color:var(--lsteel);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);color:var(--gold);}
+.tag-red{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);color:var(--lred);}
+.tag-grn{background:rgba(21,128,61,.12);border:1px solid rgba(21,128,61,.3);color:var(--lgreen);}
+.tag-blue{background:rgba(16,84,168,.2);border:1px solid rgba(96,165,250,.3);color:var(--lblue);}
+.tag-flame{background:rgba(234,88,12,.15);border:1px solid rgba(234,88,12,.3);color:var(--lflame);}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+@keyframes wickFlow{from{stroke-dashoffset:120;}to{stroke-dashoffset:0;}}
+@keyframes suckerPop{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+
+/* ══ S1 OPENING ══ */
+#s1{background:#060810;}
+#s1 .ga{width:500px;height:500px;top:-150px;right:-100px;background:radial-gradient(circle,rgba(71,85,105,.18),transparent 65%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(245,166,35,.06),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lsteel),var(--steel),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lsteel);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lsteel);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(46px,6vw,74px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lsteel);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:28px;font-weight:300;}
+#s1 .pro-badge{padding:14px 18px;background:rgba(71,85,105,.08);border:1px solid rgba(71,85,105,.25);border-left:3px solid var(--lsteel);border-radius:0 6px 6px 0;max-width:540px;margin-bottom:14px;}
+#s1 .pb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:2px;margin-bottom:5px;}
+#s1 .pb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .recap-q{padding:12px 16px;background:rgba(71,85,105,.05);border:1px solid rgba(71,85,105,.15);border-radius:6px;max-width:540px;}
+#s1 .rq-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:2px;margin-bottom:4px;}
+#s1 .rq-text{font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══ S2 WHAT IS DESOLDERING ══ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(71,85,105,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:44px 44px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lsteel);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:18px;}
+#s2 .use-cases{display:flex;flex-direction:column;gap:10px;}
+#s2 .uc-row{display:flex;gap:12px;padding:11px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:7px;align-items:flex-start;transition:all .2s;}
+#s2 .uc-row:hover{border-color:rgba(148,163,184,.25);background:rgba(71,85,105,.06);}
+#s2 .uc-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+#s2 .uc-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s2 .uc-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s2 .right{padding:40px 40px;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+#s2 .compare-col{display:flex;flex-direction:column;gap:10px;}
+#s2 .cmp-card{padding:14px 16px;border-radius:8px;}
+#s2 .cmp-card.sol{background:rgba(234,88,12,.07);border:1px solid rgba(234,88,12,.2);}
+#s2 .cmp-card.des{background:rgba(71,85,105,.08);border:1px solid rgba(71,85,105,.25);}
+#s2 .cc-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:6px;}
+#s2 .cmp-card.sol .cc-label{color:var(--lflame);}
+#s2 .cmp-card.des .cc-label{color:var(--lsteel);}
+#s2 .cc-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══ S3 TOOLS ══ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s3 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s3 .tool-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;flex:1;}
+#s3 .tool-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:22px 18px;display:flex;flex-direction:column;gap:10px;transition:all .2s;}
+#s3 .tool-card:hover{border-color:rgba(148,163,184,.3);background:rgba(71,85,105,.06);transform:translateY(-2px);}
+#s3 .tc-icon{font-size:32px;}
+#s3 .tc-name{font-size:15px;font-weight:600;color:var(--white);}
+#s3 .tc-spec{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:2px;}
+#s3 .tc-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s3 .tc-tip{margin-top:auto;padding:7px 10px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:5px;font-size:11px;color:var(--gold);line-height:1.5;}
+
+/* ══ S4 DESOLDERING WICK ══ */
+#s4{background:var(--navy2);}
+#s4 .ga{width:500px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s4 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s4 .left{flex:1;}
+#s4 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s4 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s4 h2 em{color:var(--lsteel);font-style:italic;}
+#s4 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s4 .steps{display:flex;flex-direction:column;gap:10px;}
+#s4 .step{display:flex;gap:14px;align-items:flex-start;}
+#s4 .sn{width:28px;height:28px;background:var(--steel);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+#s4 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s4 .st span{color:var(--lsteel);font-weight:600;}
+#s4 .warn-box{padding:11px 14px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-left:3px solid var(--red);border-radius:0 5px 5px 0;}
+#s4 .wb-text{font-size:13px;color:#FCA5A5;line-height:1.5;}
+
+/* ══ S5 SOLDER SUCKER ══ */
+#s5{background:var(--navy);}
+#s5 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s5 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s5 .left{flex:1;}
+#s5 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s5 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s5 h2 em{color:var(--gold);font-style:italic;}
+#s5 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s5 .steps{display:flex;flex-direction:column;gap:10px;}
+#s5 .sn{width:28px;height:28px;background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0;margin-top:1px;}
+#s5 .step{display:flex;gap:14px;align-items:flex-start;}
+#s5 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s5 .st span{color:var(--gold);font-weight:600;}
+
+/* ══ S6 PAD CARE ══ */
+#s6{background:var(--navy2);}
+#s6 .ga{width:400px;height:400px;bottom:-80px;right:-60px;background:radial-gradient(circle,rgba(220,38,38,.07),transparent 60%);}
+#s6 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s6 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s6 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s6 .rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s6 .rule-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px 16px;display:flex;flex-direction:column;gap:8px;transition:all .2s;}
+#s6 .rule-card:hover{border-color:rgba(220,38,38,.25);background:rgba(220,38,38,.04);}
+#s6 .rc-num{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:rgba(220,38,38,.3);line-height:1;}
+#s6 .rc-title{font-size:13px;font-weight:600;color:var(--white);}
+#s6 .rc-wrong{font-size:12px;color:var(--lred);line-height:1.5;margin-bottom:3px;}
+#s6 .rc-right{font-size:12px;color:var(--lgreen);line-height:1.5;}
+
+/* ══ S7 HANDS-ON TASK ══ */
+#s7{background:radial-gradient(ellipse at 20% 50%,#0D1C30,#060810);}
+#s7 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(71,85,105,.12),transparent 60%);}
+#s7 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s7 .left{flex:1;}
+#s7 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s7 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s7 h2 span{color:var(--lsteel);}
+#s7 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s7 .tasks{display:flex;flex-direction:column;gap:10px;}
+#s7 .task-row{display:flex;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;align-items:flex-start;cursor:pointer;transition:all .2s;}
+#s7 .task-row:hover{border-color:rgba(148,163,184,.25);}
+#s7 .task-row.done{background:rgba(21,128,61,.06);border-color:rgba(74,222,128,.25);}
+#s7 .task-row.done .tr-num{background:rgba(21,128,61,.2);border-color:rgba(74,222,128,.4);color:var(--lgreen);}
+#s7 .tr-num{width:26px;height:26px;background:rgba(71,85,105,.2);border:1px solid rgba(71,85,105,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--lsteel);flex-shrink:0;margin-top:1px;transition:all .2s;}
+#s7 .tr-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s7 .tr-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+#s7 .progress-box{padding:14px 16px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;}
+#s7 .pb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:8px;}
+#s7 .pb-bar{height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;}
+#s7 .pb-fill{height:100%;background:linear-gradient(90deg,var(--steel),var(--lsteel));border-radius:3px;transition:width .4s ease;width:0%;}
+#s7 .pb-status{font-size:12px;color:#C8D8E8;margin-top:6px;}
+
+/* ══ S8 COMPONENT REPLACEMENT ══ */
+#s8{background:var(--navy);}
+#s8 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s8 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s8 .left{flex:1;}
+#s8 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s8 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s8 h2 span{color:var(--lsteel);}
+#s8 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s8 .steps{display:flex;flex-direction:column;gap:10px;}
+#s8 .step{display:flex;gap:14px;align-items:flex-start;}
+#s8 .sn{width:28px;height:28px;background:var(--steel);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+#s8 .st{font-size:13px;color:var(--white);line-height:1.6;}
+#s8 .st span{color:var(--lsteel);font-weight:600;}
+#s8 .tip-box{padding:12px 14px;background:rgba(71,85,105,.08);border:1px solid rgba(71,85,105,.2);border-radius:8px;}
+#s8 .tb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:5px;}
+#s8 .tb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══ S9 BRIDGE REMOVAL ══ */
+#s9{background:var(--navy2);}
+#s9 .ga{width:500px;height:400px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s9 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s9 .bridge-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;}
+#s9 .bridge-panel{display:flex;flex-direction:column;gap:12px;}
+#s9 .bp-header{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;margin-bottom:4px;}
+#s9 .bridge-panel.prob .bp-header{color:var(--lred);}
+#s9 .bridge-panel.fix .bp-header{color:var(--lgreen);}
+#s9 .method-card{padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;transition:all .2s;}
+#s9 .method-card:hover{border-color:rgba(148,163,184,.2);}
+#s9 .mc-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;}
+#s9 .mc-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s9 .mc-when{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-top:6px;}
+
+/* ══ S10 REWORK QUALITY ══ */
+#s10{background:var(--navy);}
+#s10 .ga{width:400px;height:400px;top:-80px;right:-60px;background:radial-gradient(circle,rgba(71,85,105,.1),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s10 .left{flex:1;}
+#s10 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s10 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s10 .standard{display:flex;flex-direction:column;gap:8px;}
+#s10 .std-row{display:flex;gap:10px;padding:10px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;align-items:flex-start;cursor:pointer;transition:all .2s;}
+#s10 .std-row:hover{border-color:rgba(148,163,184,.2);}
+#s10 .std-row.pass{background:rgba(21,128,61,.06);border-color:rgba(74,222,128,.25);}
+#s10 .std-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+#s10 .std-text{font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s10 .std-note{font-size:11px;color:var(--grey);margin-top:2px;}
+#s10 .score-box{padding:14px 16px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;}
+#s10 .sb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:6px;}
+#s10 .sb-text{font-size:13px;color:#C8D8E8;}
+
+/* ══ S11 CLOSING ══ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1C30,#060810);}
+#s11 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(71,85,105,.12),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(245,166,35,.06),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lsteel),var(--steel),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lsteel);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lsteel);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,54px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lsteel);font-style:italic;}
+#s11 .can-do{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+#s11 .cd-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8;}
+#s11 .cd-check{width:20px;height:20px;background:rgba(71,85,105,.15);border:1px solid rgba(71,85,105,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lsteel);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;}
+#s11 .tomorrow-box strong{color:var(--lsteel);}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+<div class="deck" id="deck">
+
+<!-- ══ S1 OPENING ══ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 8 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au">Desoldering<br>&amp; <em>Rework</em></h1>
+    <p class="sub au">The skill that separates a competent solderer from a complete one. Today you learn to undo what you built &mdash; cleanly, without damage.</p>
+    <div class="pro-badge au">
+      <div class="pb-label">WHAT THIS SKILL MEANS IN THE REAL WORLD</div>
+      <div class="pb-text">A board that cannot be reworked is disposable. A technician who can desolder cleanly saves the board, the component, and the cost of replacement. This is the difference between a &#x201C;repair&#x201D; and a &#x201C;replace&#x201D; culture &mdash; and it matters enormously in pharma labs, manufacturing, and any environment where downtime is expensive.</div>
+    </div>
+    <div class="recap-q au">
+      <div class="rq-label">DAY 7 RECALL &mdash; 30 SECONDS</div>
+      <div class="rq-text">Name the correct component assembly sequence (shortest to tallest). Then name the one action required before the battery was connected to the board yesterday.</div>
+    </div>
+  </div>
+  <div class="inst au"><p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p><p>KLE TECHNOLOGICAL UNIVERSITY</p><p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p></div>
+</div>
+
+<!-- ══ S2 WHAT IS DESOLDERING ══ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-steel">REWORK DEFINED</span></div>
+      <h2 class="au">Removing<br>what was<br><span>soldered.</span></h2>
+      <p class="intro au">Desoldering is the controlled removal of solder from a joint in order to remove a component or correct a fault. It is used in repair, upgrade, and quality control. Every professional electronics technician performs it daily.</p>
+      <div class="use-cases">
+        <div class="uc-row au"><div class="uc-icon">&#x1F527;</div><div><div class="uc-title">Wrong component installed</div><div class="uc-desc">Remove the incorrect component, clean the pad, install the correct one. Faster than replacing the whole board.</div></div></div>
+        <div class="uc-row au"><div class="uc-icon">&#x274C;</div><div><div class="uc-title">Cold or bridged joint needing correction</div><div class="uc-desc">Remove excess solder cleanly, reflow the joint correctly. One desoldering pass saves the component.</div></div></div>
+        <div class="uc-row au"><div class="uc-icon">&#x1F4BB;</div><div><div class="uc-title">Failed component needing replacement</div><div class="uc-desc">Remove the dead component, clean the pads, fit a replacement. The PCB continues its service life.</div></div></div>
+        <div class="uc-row au"><div class="uc-icon">&#x2B06;</div><div><div class="uc-title">Upgrading a component value</div><div class="uc-desc">Replace a resistor with a different value, swap an LED colour, fit a higher-rated capacitor &mdash; without discarding the board.</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="compare-col">
+        <div class="au"><span class="tag tag-flame">SOLDERING</span></div>
+        <div class="cmp-card sol au">
+          <div class="cc-label">ADDING SOLDER</div>
+          <div class="cc-text">Apply heat to the joint. Feed solder. Remove iron. The joint bonds component to pad permanently. Forward operation &mdash; creating connections.</div>
+        </div>
+        <div class="au" style="text-align:center;font-size:24px;color:rgba(255,255,255,.2);padding:4px 0;">&#x2195;</div>
+        <div class="au"><span class="tag tag-steel">DESOLDERING</span></div>
+        <div class="cmp-card des au">
+          <div class="cc-label">REMOVING SOLDER</div>
+          <div class="cc-text">Apply heat to the existing joint. Use wick or sucker to remove molten solder. Component releases from pad. Reverse operation &mdash; undoing connections.</div>
+        </div>
+        <div style="padding:12px 14px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;" class="au">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:5px;">THE CRITICAL DIFFERENCE</div>
+          <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Desoldering requires the same iron temperature and heat-to-joint technique as soldering. The difference is what you do with the molten solder — you remove it rather than add more.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S3 TOOLS ══ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-steel">DESOLDERING TOOLKIT</span></div>
+    <h2 class="au">Three Tools. One Job.</h2>
+    <p class="sub au">Each tool has a specific application. You will use all three today. Pick each one up as it is described.</p>
+    <div class="tool-grid">
+      <div class="tool-card au">
+        <div class="tc-icon">&#x1F9F5;</div>
+        <div class="tc-name">Desoldering Wick</div>
+        <div class="tc-spec">COPPER BRAID &middot; 2.0MM WIDTH</div>
+        <div class="tc-desc">A flat braid of fine copper wire coated with flux. When placed on a hot solder joint, the capillary action of the braid draws molten solder out of the joint and into the braid. Best for flat pads and precise removal.</div>
+        <div class="tc-tip">Pull the wick away while still hot. Pulling cold rips the copper pad off the board.</div>
+      </div>
+      <div class="tool-card au">
+        <div class="tc-icon">&#x1F489;</div>
+        <div class="tc-name">Solder Sucker</div>
+        <div class="tc-spec">SPRING-LOADED PUMP</div>
+        <div class="tc-desc">A spring-loaded plunger that creates suction when triggered. Heat the joint, place the nozzle over the molten solder, press the button — the solder is sucked into the body of the tool. Best for through-hole components with large solder volumes.</div>
+        <div class="tc-tip">Empty the sucker regularly by pressing the plunger without triggering. Accumulated solder inside reduces suction.</div>
+      </div>
+      <div class="tool-card au">
+        <div class="tc-icon">&#x1F525;</div>
+        <div class="tc-name">Soldering Iron (same as before)</div>
+        <div class="tc-spec">350&deg;C &middot; FINE TIP PREFERRED</div>
+        <div class="tc-desc">The same iron you used on Days 6 and 7. Re-tin and clean the tip before every desoldering session. A tinned tip transfers heat faster to the existing joint, making removal cleaner and faster.</div>
+        <div class="tc-tip">Use a fine chisel or conical tip for desoldering through-hole joints. A wider tip spreads heat inefficiently and risks lifting adjacent pads.</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px 18px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:8px;display:flex;gap:12px;align-items:center;" class="au">
+      <span style="font-size:18px;flex-shrink:0;">&#x1F4A1;</span>
+      <span style="font-size:13px;color:#C8D8E8;">For most through-hole work on this board: use the <strong style="color:var(--lsteel);">solder sucker</strong> first for bulk removal, then the <strong style="color:var(--lsteel);">wick</strong> to clean up residue. The combination is faster than either tool alone.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S4 DESOLDERING WICK ══ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-steel">TECHNIQUE 1</span></div>
+      <h2 class="au">Using<br><em>Desoldering Wick</em></h2>
+      <p class="def au">The wick works through capillary action &mdash; the same force that makes water climb a paper towel. The flux coating activates with heat and draws molten solder into the copper braid. It leaves the pad cleaner than any other method.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st">Cut a <span>fresh 2&ndash;3cm length</span> of wick from the reel. Used wick saturated with solder will not absorb more. Always use fresh wick for each joint.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Place the wick <span>flat on top of the joint</span> you want to desolder. The wick must contact the solder, not just the component leg.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Press the <span>iron tip onto the wick</span>, not directly on the joint. Heat transfers through the wick into the solder. Hold for 2&ndash;3 seconds.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st">Watch the solder <span>flow into the wick</span> &mdash; the wick will change colour from copper to silver-grey as it absorbs solder. This is correct.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st">Remove the <span>iron and wick together</span> in one smooth motion while still hot. Do not let the wick cool on the pad before removing.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st"><span>Inspect the pad</span>. It should be clean copper. If residual solder remains, repeat with a fresh piece of wick.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Wick SVG -->
+      <svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <text x="150" y="16" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(148,163,184,0.5)" letter-spacing="1">DESOLDERING WICK IN ACTION</text>
+        <!-- PCB -->
+        <rect x="40" y="100" width="220" height="30" rx="4" fill="rgba(26,92,42,0.2)" stroke="rgba(34,197,94,0.3)" stroke-width="1"/>
+        <!-- Pad -->
+        <ellipse cx="150" cy="100" rx="18" ry="7" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.4)" stroke-width="1"/>
+        <!-- Component leg -->
+        <line x1="150" y1="60" x2="150" y2="100" stroke="rgba(200,212,224,0.5)" stroke-width="2"/>
+        <!-- Solder joint (being removed) -->
+        <ellipse cx="150" cy="103" rx="14" ry="5" fill="rgba(180,83,9,0.4)" stroke="rgba(251,146,60,0.5)" stroke-width="1"/>
+        <!-- Wick -->
+        <rect x="108" y="88" width="84" height="12" rx="3" fill="rgba(180,83,9,0.3)" stroke="rgba(200,160,80,0.6)" stroke-width="1.5">
+          <animate attributeName="fill" values="rgba(180,83,9,0.3);rgba(100,116,139,0.5);rgba(180,83,9,0.3)" dur="2s" repeatCount="indefinite"/>
+        </rect>
+        <text x="150" y="98" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(200,160,80,0.6)">WICK</text>
+        <!-- Iron -->
+        <line x1="200" y1="40" x2="170" y2="88" stroke="rgba(100,116,139,0.5)" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="170" cy="89" r="5" fill="var(--lflame)" opacity="0.8"/>
+        <!-- Flow arrows -->
+        <path d="M 135,95 Q 125,90 118,88" stroke="rgba(180,83,9,0.5)" stroke-width="1.5" stroke-dasharray="3,2" fill="none" marker-end="url(#aw)"/>
+        <text x="150" y="165" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(148,163,184,0.4)" letter-spacing="1">SOLDER FLOWS INTO WICK</text>
+        <defs><marker id="aw" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" fill="rgba(180,83,9,0.5)"/></marker></defs>
+      </svg>
+      <div class="warn-box au">
+        <div class="wb-text"><strong style="color:var(--lred);">Pull while hot — always.</strong> If the wick cools and bonds to the pad before you remove it, pulling it off cold rips the copper pad from the board. That pad cannot be reattached. The board is permanently damaged at that location.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:5px;">HOW TO KNOW IT WORKED</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">The pad surface is bare copper, slightly shinier than the surrounding board. No solder blob remains. The component leg can be moved freely in the hole.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S5 SOLDER SUCKER ══ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">TECHNIQUE 2</span></div>
+      <h2 class="au">Using the<br><em>Solder Sucker</em></h2>
+      <p class="def au">The solder sucker uses mechanical suction to physically pull molten solder off the pad in one action. It works best for through-hole joints with large solder volumes — resistors, capacitors, headers. It removes solder faster than wick but leaves more residue.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st"><span>Prime the sucker</span> by pressing the plunger down until it clicks into the locked position. It is now loaded and ready.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st">Heat the solder joint with the iron tip for <span>2&ndash;3 seconds</span> until the solder is fully molten and shiny.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st">Without removing the iron, place the <span>sucker nozzle</span> directly over the joint, surrounding the component leg and molten solder.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st"><span>Press the trigger button</span> while holding the nozzle in place. The spring releases, creating suction that pulls the molten solder into the barrel.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st">Remove the iron and sucker together. <span>Inspect the pad</span>. You should see a clean pad with the component leg free in the hole. Repeat if residual solder remains.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st"><span>Empty the sucker</span> every 5&ndash;6 uses by holding it away from the board, pressing the plunger, and releasing the accumulated solder into a bin.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Sucker SVG -->
+      <svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <text x="140" y="16" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(148,163,184,0.5)" letter-spacing="1">SOLDER SUCKER</text>
+        <!-- Body -->
+        <rect x="20" y="50" width="200" height="36" rx="10" fill="rgba(100,116,139,0.15)" stroke="rgba(148,163,184,0.4)" stroke-width="1.5"/>
+        <!-- Plunger -->
+        <rect x="10" y="60" width="30" height="16" rx="4" fill="rgba(71,85,105,0.3)" stroke="rgba(148,163,184,0.4)" stroke-width="1"/>
+        <!-- Nozzle -->
+        <rect x="220" y="58" width="40" height="20" rx="5" fill="rgba(100,116,139,0.25)" stroke="rgba(148,163,184,0.5)" stroke-width="1.5"/>
+        <!-- Button -->
+        <circle cx="120" cy="38" r="10" fill="rgba(220,38,38,0.2)" stroke="rgba(220,38,38,0.5)" stroke-width="1.5"/>
+        <text x="120" y="43" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(252,165,165,0.7)">BTN</text>
+        <line x1="120" y1="48" x2="120" y2="50" stroke="rgba(220,38,38,0.4)" stroke-width="1.5"/>
+        <!-- Suction indicator -->
+        <path d="M 255,68 Q 265,60 260,55" stroke="rgba(245,166,35,0.4)" stroke-width="1.5" stroke-dasharray="3,2" fill="none"/>
+        <path d="M 255,72 Q 268,68 265,60" stroke="rgba(245,166,35,0.3)" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+        <text x="258" y="85" font-family="DM Mono,monospace" font-size="8" fill="rgba(245,166,35,0.4)">suction</text>
+        <!-- Labels -->
+        <text x="25" y="105" font-family="DM Mono,monospace" font-size="8" fill="rgba(148,163,184,0.4)">PLUNGER</text>
+        <text x="195" y="105" font-family="DM Mono,monospace" font-size="8" fill="rgba(148,163,184,0.4)">NOZZLE</text>
+        <!-- Capacity note -->
+        <text x="140" y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(148,163,184,0.3)" letter-spacing="1">EMPTY EVERY 5-6 USES</text>
+        <!-- Solder dots in barrel (visual only) -->
+        <circle cx="80" cy="68" r="3" fill="rgba(180,83,9,0.3)"/>
+        <circle cx="95" cy="64" r="2" fill="rgba(180,83,9,0.25)"/>
+        <circle cx="110" cy="70" r="3" fill="rgba(180,83,9,0.3)"/>
+      </svg>
+      <div style="padding:12px 14px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:5px;">WICK VS SUCKER — WHEN TO USE WHICH</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:12px;color:#C8D8E8;"><strong style="color:var(--lsteel);">Wick:</strong> Fine residue, surface-mount style cleanup, single pad work, tight spaces between pads.</div>
+          <div style="font-size:12px;color:#C8D8E8;"><strong style="color:var(--gold);">Sucker:</strong> Through-hole bulk removal, large joints, faster on multiple pads in sequence.</div>
+          <div style="font-size:12px;color:#C8D8E8;"><strong style="color:var(--lgreen);">Combined:</strong> Sucker first for volume, wick for cleanup — professional standard.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S6 PAD CARE ══ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-red">PROTECTING THE BOARD</span></div>
+    <h2 class="au">Pad Care — Six Rules</h2>
+    <p class="sub au">The copper pad is the most fragile part of the PCB. Once lifted, it cannot be reattached. These six rules protect it during every desoldering operation.</p>
+    <div class="rule-grid">
+      <div class="rule-card au">
+        <div class="rc-num">1</div>
+        <div class="rc-title">Never overheat a pad</div>
+        <div class="rc-wrong">Holding the iron on a pad for more than 4&ndash;5 seconds weakens the adhesive bond between the copper and the board substrate.</div>
+        <div class="rc-right">Heat in short bursts of 2&ndash;3 seconds. Let it cool for 3 seconds between attempts. Multiple short heats are safer than one long one.</div>
+      </div>
+      <div class="rule-card au">
+        <div class="rc-num">2</div>
+        <div class="rc-title">Never pull cold wick</div>
+        <div class="rc-wrong">Removing cooled wick that has bonded to the pad will rip the copper off the board. This is the most common cause of pad damage in training.</div>
+        <div class="rc-right">Always pull the wick away while the iron is still on it — in one smooth motion, iron and wick together, simultaneously.</div>
+      </div>
+      <div class="rule-card au">
+        <div class="rc-num">3</div>
+        <div class="rc-title">Never force a component</div>
+        <div class="rc-wrong">If a component does not come free after desoldering, forcing it out mechanically tears the pad with it.</div>
+        <div class="rc-right">If the component is stuck, there is still solder in the hole. Apply heat again and remove the remaining solder before attempting removal.</div>
+      </div>
+      <div class="rule-card au">
+        <div class="rc-num">4</div>
+        <div class="rc-title">Add flux before desoldering</div>
+        <div class="rc-wrong">Old solder loses flux over time and does not reflow cleanly. Trying to desolder dry old solder requires excessive heat.</div>
+        <div class="rc-right">Apply a tiny amount of flux paste to the joint before heating. The fresh flux lowers the melting point and helps the solder flow into the wick faster.</div>
+      </div>
+      <div class="rule-card au">
+        <div class="rc-num">5</div>
+        <div class="rc-title">Desolder one pin at a time</div>
+        <div class="rc-wrong">Trying to heat all pins of a multi-leg component simultaneously (e.g. a switch) risks overheating the board and lifting multiple pads at once.</div>
+        <div class="rc-right">Desolder each pin fully and individually. Alternate between pins to allow cooling between operations.</div>
+      </div>
+      <div class="rule-card au">
+        <div class="rc-num">6</div>
+        <div class="rc-title">Clean the pad after removal</div>
+        <div class="rc-wrong">Leaving flux residue and solder remnants on the pad before fitting the new component. The new joint will be on top of contamination.</div>
+        <div class="rc-right">Wipe the pad with isopropyl alcohol on a cotton bud after desoldering. The pad should be clean copper before the new component goes in.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S7 HANDS-ON TASK ══ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-steel">HANDS-ON TASK</span></div>
+      <h2 class="au">Desolder<br><span>Three Components</span></h2>
+      <p class="intro au">Using your Day 7 PCB, you will desolder three components in order. After each removal, inspect the pad before proceeding. Click each task when complete.</p>
+      <div class="tasks" id="taskList">
+        <div class="task-row au" onclick="completeTask(this,0)">
+          <div class="tr-num">1</div>
+          <div><div class="tr-title">Desolder one resistor using wick only</div><div class="tr-desc">Select any resistor. Use only the desoldering wick. Clean both pads. Inspect under magnification.</div></div>
+        </div>
+        <div class="task-row au" onclick="completeTask(this,1)">
+          <div class="tr-num">2</div>
+          <div><div class="tr-title">Desolder one resistor using sucker + wick</div><div class="tr-desc">Select a second resistor. Use the sucker for bulk removal, then wick for cleanup. Compare pad quality with Task 1.</div></div>
+        </div>
+        <div class="task-row au" onclick="completeTask(this,2)">
+          <div class="tr-num">3</div>
+          <div><div class="tr-title">Desolder one LED (2 legs, polarity-sensitive)</div><div class="tr-desc">The LED has two pins close together. Alternate pin-by-pin. Be careful not to lift the pad between the two holes.</div></div>
+        </div>
+        <div class="task-row au" onclick="completeTask(this,3)">
+          <div class="tr-num">4</div>
+          <div><div class="tr-title">Pad inspection and cleaning</div><div class="tr-desc">Clean all desoldered pads with IPA. Confirm bare copper visible on each. Call instructor for check.</div></div>
+        </div>
+        <div class="task-row au" onclick="completeTask(this,4)">
+          <div class="tr-num">5</div>
+          <div><div class="tr-title">Re-solder all three components</div><div class="tr-desc">Install each component back into the clean pads. Apply new solder. Confirm all joints meet Day 6 quality standard.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="progress-box au">
+        <div class="pb-label">TASK PROGRESS</div>
+        <div class="pb-bar"><div class="pb-fill" id="pbFill"></div></div>
+        <div class="pb-status" id="pbStatus">0 / 5 tasks complete</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:6px;">ORDER OF OPERATIONS</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.7;">
+          Heat joint (2&ndash;3s) &rarr; Apply wick or sucker &rarr; Remove while hot &rarr; Inspect pad &rarr; Repeat if needed &rarr; Clean with IPA &rarr; Re-solder clean pad
+        </div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.18);border-radius:6px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:4px;">IF A PAD LIFTS</div>
+        <div style="font-size:12px;color:#FCA5A5;line-height:1.5;">Stop immediately. Inform the instructor. Do not attempt to reattach. The board is repairable — the instructor will show you the bridging technique. This is a learning moment, not a failure.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S8 COMPONENT REPLACEMENT ══ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-steel">FULL REPLACEMENT CYCLE</span></div>
+      <h2 class="au">Remove.<br>Clean.<br><span>Replace.</span></h2>
+      <p class="intro au">The complete rework cycle used in professional electronics repair. Every step matters — skipping pad cleaning is the most common cause of poor new joints after rework.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn">1</div><div class="st"><span>Identify</span> the component to be replaced. Confirm the correct replacement part is available before removing the old one.</div></div>
+        <div class="step au"><div class="sn">2</div><div class="st"><span>Desolder</span> all legs of the component using wick and sucker combination. Verify each pad is clean before proceeding.</div></div>
+        <div class="step au"><div class="sn">3</div><div class="st"><span>Remove</span> the component by gently pulling upward while the last joint is still warm. Do not force.</div></div>
+        <div class="step au"><div class="sn">4</div><div class="st"><span>Clean the pads</span> with IPA on a cotton bud. Wait 30 seconds for IPA to evaporate before soldering.</div></div>
+        <div class="step au"><div class="sn">5</div><div class="st"><span>Inspect</span> each pad for damage. Verify hole is clear. Apply fresh flux to the pads.</div></div>
+        <div class="step au"><div class="sn">6</div><div class="st"><span>Insert the new component</span>. Confirm polarity for diodes, LEDs, and capacitors. Solder each leg using the Day 6 technique.</div></div>
+        <div class="step au"><div class="sn">7</div><div class="st"><span>Test the circuit</span> after replacement. A successfully replaced component is electrically indistinguishable from the original.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="tip-box au">
+        <div class="tb-label">CONFIRMING REPLACEMENT BEFORE REMOVAL</div>
+        <div class="tb-text">Never desolder a component without having its replacement in hand. A board with empty pads and no replacement part is in a worse state than a board with a faulty component. Confirm part availability first.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:6px;">VERIFYING POLARITY ON THE REPLACEMENT</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Even if the original was installed incorrectly, verify the replacement independently using the component reference card &mdash; not by copying the orientation of what you just removed. The reason you are replacing it may be a polarity error.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:6px;">IPA CLEANING &mdash; WHY IT MATTERS</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Flux residue on a pad is slightly corrosive over time. It also reduces the bond between fresh solder and the copper. A clean pad before re-soldering produces a better joint with less solder than a contaminated one.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S9 BRIDGE REMOVAL ══ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-steel">COMMON FAULT FIX</span></div>
+    <h2 class="au">Removing Solder Bridges</h2>
+    <p class="sub au">A solder bridge is solder connecting two pads that should be separate &mdash; creating a short circuit. It is one of the most common PCB faults and one of the easiest to fix when you know how.</p>
+    <div class="bridge-grid">
+      <div class="bridge-panel prob">
+        <div class="bp-header">THE PROBLEM &mdash; A SOLDER BRIDGE</div>
+        <!-- Bridge SVG -->
+        <svg viewBox="0 0 240 120" fill="none" width="100%">
+          <rect x="20" y="60" width="200" height="30" rx="4" fill="rgba(26,92,42,0.15)" stroke="rgba(34,197,94,0.3)" stroke-width="1"/>
+          <!-- Two pads -->
+          <ellipse cx="90"  cy="60" rx="18" ry="7" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.4)" stroke-width="1"/>
+          <ellipse cx="150" cy="60" rx="18" ry="7" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.4)" stroke-width="1"/>
+          <!-- Bridge of solder -->
+          <rect x="100" y="55" width="40" height="10" rx="3" fill="rgba(180,83,9,0.7)" stroke="rgba(252,165,165,0.6)" stroke-width="1.5"/>
+          <!-- Warning indicator -->
+          <text x="120" y="95" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(252,165,165,0.6)" letter-spacing="1">SHORT CIRCUIT</text>
+          <text x="90"  y="38" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(245,166,35,0.4)">PAD A</text>
+          <text x="150" y="38" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(245,166,35,0.4)">PAD B</text>
+        </svg>
+        <!-- What it causes -->
+        <div style="padding:10px 12px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.18);border-radius:6px;">
+          <div style="font-size:12px;color:#FCA5A5;line-height:1.5;">Symptom: Device does not work, component gets warm, or circuit behaves erratically. Detected by: continuity test between the two bridged pads (beep when there should be silence).</div>
+        </div>
+      </div>
+      <div class="bridge-panel fix">
+        <div class="bp-header">THREE WAYS TO FIX IT</div>
+        <div class="method-card">
+          <div class="mc-title">Method 1 — Wick over the bridge</div>
+          <div class="mc-desc">Place fresh wick across the bridge. Apply iron. The wick absorbs the bridge solder. Remove while hot. Both pads should now be separate.</div>
+          <div class="mc-when">BEST FOR: small bridges with minimal solder volume</div>
+        </div>
+        <div class="method-card">
+          <div class="mc-title">Method 2 — Drag with iron tip</div>
+          <div class="mc-desc">Drag the iron tip sideways across the bridge while it is molten. Surface tension on the tip pulls excess solder away. Wipe tip immediately on brass wool.</div>
+          <div class="mc-when">BEST FOR: bridges between pins that are hard to access with wick</div>
+        </div>
+        <div class="method-card">
+          <div class="mc-title">Method 3 — Sucker on the bridge</div>
+          <div class="mc-desc">Heat the bridge, place sucker nozzle over it, trigger. The sucker pulls the bridge solder away. Follow with wick to clean residue.</div>
+          <div class="mc-when">BEST FOR: large bridges with significant solder volume</div>
+        </div>
+        <div style="padding:8px 12px;background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.2);border-radius:6px;">
+          <div style="font-size:12px;color:var(--lgreen);">After any method: continuity test between the two pads. Must give silence (no beep) to confirm the bridge is gone.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S10 REWORK QUALITY ══ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-steel">QUALITY STANDARD</span></div>
+      <h2 class="au">What Good<br>Rework Looks Like</h2>
+      <p class="intro au">A reworked board should be indistinguishable from an original assembly. These are the standards that define a successful rework operation. Click each when confirmed on your board.</p>
+      <div class="standard" id="reworkChecks">
+        <div class="std-row au" onclick="passStd(this)">
+          <div class="std-icon">&#x1F50D;</div>
+          <div><div class="std-text">All desoldered pads are bare copper &mdash; no solder residue</div><div class="std-note">Verify under magnifying lamp. Solder specks less than 0.3mm are acceptable.</div></div>
+        </div>
+        <div class="std-row au" onclick="passStd(this)">
+          <div class="std-icon">&#x26A1;</div>
+          <div><div class="std-text">All new joints are shiny and volcano-shaped</div><div class="std-note">Same quality standard as original Day 6 joints. No cold joints on reworked pads.</div></div>
+        </div>
+        <div class="std-row au" onclick="passStd(this)">
+          <div class="std-icon">&#x1F9ED;</div>
+          <div><div class="std-text">All component polarities verified after replacement</div><div class="std-note">Do not assume the replacement matches the orientation of the removed component.</div></div>
+        </div>
+        <div class="std-row au" onclick="passStd(this)">
+          <div class="std-icon">&#x1F50B;</div>
+          <div><div class="std-text">Board powers up and functions as expected after rework</div><div class="std-note">Connect battery. Red LED on, green LED controlled by switch. Both must function.</div></div>
+        </div>
+        <div class="std-row au" onclick="passStd(this)">
+          <div class="std-icon">&#x1F9EA;</div>
+          <div><div class="std-text">Pads cleaned with IPA, flux residue removed</div><div class="std-note">Board surface near reworked area should be clean, not sticky or discoloured.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="score-box au">
+        <div class="sb-label">REWORK QUALITY SCORE</div>
+        <div class="sb-text" id="reworkScore">0 / 5 standards met</div>
+      </div>
+      <div style="padding:14px 16px;background:rgba(71,85,105,.07);border:1px solid rgba(71,85,105,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lsteel);letter-spacing:1px;margin-bottom:8px;">WHY REWORK QUALITY MATTERS</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.7;">In a real electronics repair context, rework must leave no trace. The customer or user should not be able to tell which components were replaced. Visible burn marks, lifted pads, or flux residue are signs of poor rework technique &mdash; regardless of whether the circuit now functions.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:5px;">THE PROFESSIONAL STANDARD</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">IPC-7711/21 is the international standard for rework and repair of electronics. It defines what is acceptable. The principles in today&rsquo;s session are directly aligned with that standard.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S11 CLOSING ══ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 8 COMPLETE &nbsp;&middot;&nbsp; 2 SESSIONS TO GO</div>
+    <h2 class="au">You can now undo<br>what you build.<br><em>That makes you complete.</em></h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Remove solder cleanly using desoldering wick and solder sucker</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Protect copper pads during desoldering operations</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Complete a full component replacement cycle: remove, clean, replace, test</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Remove solder bridges using three different techniques</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 9:</strong> Scenario simulations. Six real-world fault stations around the lab. You move between them, diagnose each fault using the multimeter and your eyes, and propose a fix. This is the dress rehearsal for Day 10.
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+<script>
+const TOTAL=11;let cur=0,notesOpen=false,tasksDone=0,reworkDone=0;
+const NOTES=[
+  `<strong>The professional framing on this slide sets the right tone.</strong> Say: "Soldering is creating. Desoldering is the ability to undo and redo. A person who can only solder is a builder. A person who can also desolder is a technician." The business case for rework is real — in pharma lab equipment, medical devices, and manufacturing, replacing an entire PCB because one component failed is expensive. Rework is the cost-effective alternative. <em>Recall: shortest to tallest (resistors, diodes, capacitors, LEDs, switch). Instructor sign-off before battery connection. Use these to prime attention before advancing.</em>`,
+  `<strong>The comparison between soldering and desoldering establishes the mental model immediately.</strong> Say: "Everything you learned about making a good joint still applies — heat the joint, not the tool, same timing, same technique. The difference is that instead of adding solder, you are removing it." <em>The key insight on this slide: desoldering is not the opposite of soldering technically — it uses the same iron, the same temperature, the same heat-to-joint approach. The only difference is the removal step afterward. This framing reduces the perceived difficulty significantly.</em>`,
+  `<strong>Pass the tools around before explaining them.</strong> Hand the wick reel to one end of the room — let it pass around. Then the sucker. By the time you explain each tool, every participant has held it. The physical familiarity removes the uncertainty. <em>The combined wick + sucker approach is the professional standard. Demonstrate this on a spare PCB at the front: sucker first for the bulk of solder, wick to clean up the residue. Show both steps. Time it — about 15 seconds per pad when done correctly.</em>`,
+  `<strong>Demonstrate the wick technique before participants attempt it.</strong> Use a pre-soldered practice pad at the front. Narrate every step: "I am cutting fresh wick — about 3cm. I am placing it flat on the joint. I am pressing the iron on top of the wick. Watch the wick change colour — silver means it is absorbing solder. Now I remove iron and wick together, smoothly, while still hot." <em>The most important instruction on this slide: "Pull while hot." Write it on the whiteboard. It is the single most common cause of pad damage in training, and it is entirely preventable with this one instruction being followed.</em>`,
+  `<strong>Demonstrate the sucker technique before participants attempt it.</strong> Prime the sucker at the front. "I am pressing the plunger until it clicks — that is it being loaded. Now I heat the joint. Now I place the nozzle over the molten solder. Now I press the button." The click and suction sound is immediately understood. <em>The comparison table at the bottom of this slide is valuable to discuss explicitly. The combined approach (sucker then wick) is faster than either tool alone for through-hole components, and produces cleaner pads than the sucker alone. This is the workflow participants should default to for all Day 8 and Day 9 work.</em>`,
+  `<strong>These six rules should be printed and placed on each workstation during the session.</strong> They are the most practical reference material in Day 8. Read each one aloud, then pause: "Has anyone already done this by accident?" For "never pull cold wick" — at least one participant in most batches has pulled cold wick on a Day 6 or 7 joint without realising it. Normalise the experience. <em>The IPA cleaning rule (Rule 6) is often omitted by beginners because it adds a step. Explain why it matters: flux residue is acidic and over weeks corrodes the copper pad. It also reduces the adhesion of the new solder joint. A 30-second cleaning step protects both the board and the joint quality.</em>`,
+  `<strong>The five-task structure with the clickable tracker is the session's interactive spine.</strong> As participants complete each task, they click it on the slide. The progress bar fills. This visible progress motivates completion. <em>Task 3 (LED desoldering) is the hardest — two pins close together, and LED polarity must be confirmed before re-installation. Watch participants carefully during this task. The most common error is overheating between the two pads when trying to alternate quickly. Slow down, alternate with 3-second cooling between each pin.</em>`,
+  `<strong>The full replacement cycle on this slide is the real-world application of everything learned in Days 6, 7, and 8.</strong> Walk through it step by step on a live board at the front. Choose a resistor — identify it, desolder it, clean the pads, inspect, apply flux, install the replacement, solder, test. Narrate throughout. <em>Step 1 — "confirm replacement part in hand before removal" — is the most overlooked professional practice. In a real repair context, removing a component without a replacement available can leave equipment non-functional for days while parts are sourced. The discipline of confirming parts first is a professional habit worth explicitly instilling.</em>`,
+  `<strong>The three bridge-removal methods have different strengths — teach all three.</strong> Demonstrate Method 1 (wick) on a pre-bridged pad at the front. Then demonstrate Method 2 (drag with iron tip) on a second bridge. Explain Method 3 theoretically if a large bridge example is not available. <em>The most important follow-up step is the continuity test after removal. Many participants will assume the bridge is gone after a visual check. Require a multimeter continuity test on every bridge repair: probes on the two previously bridged pads, confirm silence. This is the verification step that ensures the fix is real, not visual.</em>`,
+  `<strong>The quality checklist is a self-assessment — but the instructor must verify the board test (Item 4).</strong> Every participant must power up their board after Day 8 rework and confirm both LEDs function as expected before leaving. <em>The IPC-7711/21 reference is worth naming explicitly: "The standard I am describing to you today is the same standard used in aerospace, medical device, and telecommunications electronics manufacturing. You are not doing amateur rework — you are doing IPC-standard rework." This reframes the session as professional practice, not training exercise.</em>`,
+  `<strong>"That makes you complete" is the closing line that lands.</strong> Say it slowly. "A solderer can build. A solderer who can also desolder can repair. That is a more valuable skill than building from scratch, because most of the world is already built. Most of the need is for people who can fix what is broken." <em>Day 9 preview: six scenario stations around the lab. Participants rotate between them in pairs, diagnosing each fault. This is deliberately designed to simulate real working conditions — you are not guided through each station, you diagnose independently and compare your findings with your partner. Prepare participants: "Tomorrow you will be expected to apply everything from Days 1 through 8 independently. That is the point."</em>`
+];
+const slides=document.querySelectorAll('.slide');
+const dotsEl=document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){const d=document.createElement('button');d.className='dot'+(i===0?' active':'');d.onclick=()=>goTo(i);dotsEl.appendChild(d);}
+function goTo(n){slides[cur].classList.remove('active');slides[cur].classList.add('out');const prev=cur;setTimeout(()=>slides[prev].classList.remove('out'),600);cur=n;slides[cur].classList.add('active');updateUI();}
+function go(dir){const n=cur+dir;if(n>=0&&n<TOTAL)goTo(n);}
+function updateUI(){document.getElementById('slideNum').textContent=(cur+1)+' / '+TOTAL;document.getElementById('topCount').textContent=String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');document.getElementById('prevBtn').disabled=cur===0;document.getElementById('nextBtn').disabled=cur===TOTAL-1;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));document.getElementById('notesBody').innerHTML=NOTES[cur];}
+function toggleNotes(){notesOpen=!notesOpen;document.getElementById('notesPanel').classList.toggle('open',notesOpen);document.getElementById('notesBtn').textContent=notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';}
+function completeTask(row,idx){row.classList.toggle('done');tasksDone=document.querySelectorAll('#taskList .task-row.done').length;const pct=(tasksDone/5*100)+'%';document.getElementById('pbFill').style.width=pct;const msgs=['0 / 5 tasks complete','1 / 5 — keep going','2 / 5 — halfway','3 / 5 — good progress','4 / 5 — almost done','5 / 5 — excellent!'];document.getElementById('pbStatus').textContent=msgs[tasksDone]||tasksDone+' / 5';document.getElementById('pbStatus').style.color=tasksDone===5?'#4ADE80':'#C8D8E8';}
+function passStd(row){row.classList.toggle('pass');reworkDone=document.querySelectorAll('#reworkChecks .std-row.pass').length;const el=document.getElementById('reworkScore');if(el){el.textContent=reworkDone+' / 5 standards met';el.style.color=reworkDone===5?'#4ADE80':'#C8D8E8';}}
+document.addEventListener('keydown',e=>{if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}if(e.key==='n'||e.key==='N')toggleNotes();if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}});
+const cursorEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.uc-row,.tool-card,.rule-card,.task-row,.std-row,.method-card,.cmp-card').forEach(el=>{el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));});
+let tx=0;document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
