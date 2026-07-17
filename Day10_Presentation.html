@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 10 — Assessment & Certificate | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#08111F;--navy2:#0D1C30;
+  --gold:#F5A623;--lgold:#FCD34D;--xgold:#FEF3C7;--dgold:#92400E;
+  --white:#FFFFFF;--grey:#6B7E96;--lgrey:#C8D4E0;
+  --green:#15803D;--lgreen:#4ADE80;
+  --blue:#1054A8;--lblue:#60A5FA;
+  --red:#DC2626;--lred:#FCA5A5;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#0A0800;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+.cursor{width:10px;height:10px;background:var(--gold);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(245,166,35,.25);}
+
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(245,166,35,.15);color:var(--gold);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--gold);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--gold);border-color:rgba(245,166,35,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(245,166,35,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(245,166,35,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--gold);font-style:normal;}
+
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);color:var(--gold);}
+.tag-grn{background:rgba(21,128,61,.12);border:1px solid rgba(21,128,61,.3);color:var(--lgreen);}
+.tag-blue{background:rgba(16,84,168,.2);border:1px solid rgba(96,165,250,.3);color:var(--lblue);}
+.tag-red{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);color:var(--lred);}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+
+@keyframes goldPulse{0%,100%{box-shadow:0 0 20px 6px rgba(245,166,35,.4);}50%{box-shadow:0 0 40px 14px rgba(245,166,35,.7);}}
+@keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
+@keyframes countUp{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+@keyframes confetti{0%{transform:translateY(-10px) rotate(0deg);opacity:1;}100%{transform:translateY(80px) rotate(720deg);opacity:0;}}
+
+/* ══ S1 OPENING ══ */
+#s1{background:radial-gradient(ellipse at 30% 40%,#1A1200,#0A0800);}
+#s1 .ga{width:700px;height:700px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.18),transparent 55%);}
+#s1 .gb{width:400px;height:400px;bottom:-100px;left:-80px;background:radial-gradient(circle,rgba(146,64,14,.15),transparent 60%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--gold),var(--dgold),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--gold);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(46px,6vw,74px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--gold);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:540px;margin-bottom:28px;font-weight:300;}
+#s1 .programme-tag{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+#s1 .journey{padding:14px 20px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.22);border-radius:8px;max-width:560px;}
+#s1 .j-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;}
+#s1 .j-row{display:flex;gap:0;flex-wrap:wrap;}
+#s1 .j-day{font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;border-radius:3px;margin:2px;transition:all .2s;}
+#s1 .j-day.done{background:rgba(21,128,61,.2);color:var(--lgreen);border:1px solid rgba(21,128,61,.3);}
+#s1 .j-day.today{background:rgba(245,166,35,.25);color:var(--gold);border:1px solid rgba(245,166,35,.5);font-weight:600;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══ S2 WHAT HAPPENS TODAY ══ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(245,166,35,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:44px 44px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--gold);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:22px;}
+#s2 .parts{display:flex;flex-direction:column;gap:12px;}
+#s2 .part-card{display:flex;gap:16px;padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;align-items:flex-start;transition:all .2s;}
+#s2 .part-card:hover{border-color:rgba(245,166,35,.3);}
+#s2 .pc-num{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:rgba(245,166,35,.35);line-height:1;flex-shrink:0;min-width:32px;}
+#s2 .pc-title{font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s2 .pc-desc{font-size:13px;color:var(--grey);line-height:1.5;}
+#s2 .pc-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;display:inline-block;margin-top:5px;}
+#s2 .right{padding:40px 44px;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+#s2 .pass-box{padding:18px 20px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;text-align:center;}
+#s2 .pb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px;}
+#s2 .pb-score{font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:700;color:var(--gold);line-height:1;margin-bottom:4px;}
+#s2 .pb-desc{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s2 .timing-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#s2 .tg-cell{padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;text-align:center;}
+#s2 .tg-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--gold);display:block;line-height:1;}
+#s2 .tg-lbl{font-size:11px;color:var(--grey);margin-top:5px;}
+
+/* ══ S3 QUIZ STRUCTURE ══ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 56px;gap:48px;align-items:center;}
+#s3 .left{flex:1;}
+#s3 .right{width:380px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s3 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s3 .topic-rows{display:flex;flex-direction:column;gap:8px;}
+#s3 .topic-row{display:flex;align-items:center;gap:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;transition:all .2s;}
+#s3 .topic-row:hover{border-color:rgba(245,166,35,.25);}
+#s3 .tr-qs{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);min-width:52px;flex-shrink:0;}
+#s3 .tr-name{font-size:13px;font-weight:600;color:var(--white);}
+#s3 .tr-days{font-size:11px;color:var(--grey);margin-left:auto;flex-shrink:0;}
+#s3 .quiz-tip{padding:12px 14px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.18);border-radius:8px;}
+#s3 .qt-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:5px;}
+#s3 .qt-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══ S4 PRACTICAL TASK ══ */
+#s4{background:var(--navy2);}
+#s4 .ga{width:500px;height:400px;top:-80px;left:-80px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s4 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s4 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s4 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s4 .task-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s4 .task-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:20px 16px;display:flex;flex-direction:column;gap:10px;transition:all .2s;}
+#s4 .task-card:hover{border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.04);}
+#s4 .tc-icon{font-size:28px;}
+#s4 .tc-title{font-size:14px;font-weight:600;color:var(--white);}
+#s4 .tc-desc{font-size:12px;color:var(--grey);line-height:1.5;flex:1;}
+#s4 .tc-assessed{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);border-radius:3px;color:var(--gold);width:fit-content;margin-top:auto;}
+#s4 .observer-note{margin-top:14px;padding:12px 16px;background:rgba(16,84,168,.07);border:1px solid rgba(96,165,250,.2);border-radius:8px;display:flex;gap:12px;align-items:center;font-size:13px;color:#C8D8E8;}
+
+/* ══ S5 QUIZ OPEN ══ */
+#s5{background:radial-gradient(ellipse at 30% 40%,#1A1200,#0A0800);}
+#s5 .ga{width:700px;height:600px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.14),transparent 55%);}
+#s5 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s5 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s5 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;}
+#s5 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s5 h2 em{color:var(--gold);font-style:italic;}
+#s5 .instructions{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+#s5 .inst-row{display:flex;gap:12px;padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;align-items:flex-start;}
+#s5 .ir-num{width:24px;height:24px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0;margin-top:1px;}
+#s5 .ir-text{font-size:13px;color:var(--white);line-height:1.6;}
+#s5 .ir-text span{color:var(--gold);font-weight:600;}
+/* Live countdown timer */
+#s5 .timer-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:22px;text-align:center;}
+#s5 .tp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:10px;}
+#s5 .tp-time{font-family:'Cormorant Garamond',serif;font-size:60px;font-weight:700;color:var(--gold);line-height:1;margin-bottom:4px;transition:color .3s;}
+#s5 .tp-time.warn{color:#FCA5A5;}
+#s5 .tp-sub{font-size:12px;color:var(--grey);margin-bottom:14px;}
+#s5 .tp-btn{padding:10px 24px;background:var(--gold);color:var(--navy);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border:none;border-radius:5px;cursor:pointer;transition:all .2s;}
+#s5 .tp-btn:hover{background:var(--lgold);}
+#s5 .score-reference{padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+#s5 .sr-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;}
+#s5 .sr-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+#s5 .sr-row:last-child{border-bottom:none;}
+#s5 .sr-val{font-family:'DM Mono',monospace;color:var(--gold);}
+
+/* ══ S6 WHILE WAITING ══ */
+#s6{background:var(--navy);}
+#s6 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s6 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s6 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s6 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s6 .reflection-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;}
+#s6 .ref-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:20px 18px;display:flex;flex-direction:column;gap:10px;}
+#s6 .rc-q{font-size:14px;font-weight:600;color:var(--white);line-height:1.4;margin-bottom:4px;}
+#s6 .rc-prompt{font-size:12px;color:var(--grey);line-height:1.5;font-style:italic;margin-bottom:6px;}
+#s6 textarea.rc-input{width:100%;flex:1;min-height:70px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:#C8D8E8;resize:none;outline:none;line-height:1.6;}
+#s6 textarea.rc-input:focus{border-color:var(--gold);}
+#s6 textarea.rc-input::placeholder{color:rgba(255,255,255,.2);}
+
+/* ══ S7 SCORE REVEAL ══ */
+#s7{background:radial-gradient(ellipse at 30% 40%,#1A1200,#0A0800);}
+#s7 .ga{width:700px;height:600px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.14),transparent 55%);}
+#s7 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s7 .left{flex:1;}
+#s7 .right{width:380px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s7 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s7 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;}
+#s7 .score-entry{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+#s7 .se-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;}
+#s7 .se-inputs{display:flex;gap:10px;align-items:center;}
+#s7 .se-input{width:80px;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:5px;font-family:'DM Mono',monospace;font-size:22px;color:var(--gold);text-align:center;outline:none;}
+#s7 .se-input:focus{border-color:var(--gold);}
+#s7 .se-of{font-family:'DM Mono',monospace;font-size:18px;color:var(--grey);}
+#s7 .se-btn{padding:10px 20px;background:var(--gold);color:var(--navy);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border:none;border-radius:5px;cursor:pointer;transition:all .2s;}
+#s7 .se-btn:hover{background:var(--lgold);}
+#s7 .result-display{padding:20px;border-radius:10px;text-align:center;display:none;}
+#s7 .result-display.pass{background:rgba(21,128,61,.1);border:2px solid rgba(21,128,61,.35);}
+#s7 .result-display.fail{background:rgba(220,38,38,.08);border:2px solid rgba(220,38,38,.3);}
+#s7 .rd-pct{font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:700;line-height:1;}
+#s7 .result-display.pass .rd-pct{color:var(--lgreen);}
+#s7 .result-display.fail .rd-pct{color:var(--lred);}
+#s7 .rd-verdict{font-size:16px;font-weight:600;margin-top:6px;}
+#s7 .result-display.pass .rd-verdict{color:var(--lgreen);}
+#s7 .result-display.fail .rd-verdict{color:var(--lred);}
+#s7 .rd-note{font-size:12px;color:var(--grey);margin-top:8px;line-height:1.5;}
+/* Batch board */
+#s7 .batch-board{padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+#s7 .bb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:10px;}
+#s7 .bb-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+#s7 .bb-slot{height:40px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .2s;}
+#s7 .bb-slot:hover{border-color:rgba(245,166,35,.3);}
+#s7 .bb-slot.pass{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.4);}
+#s7 .bb-slot.fail{background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.3);}
+
+/* ══ S8 CERTIFICATE MOMENT ══ */
+#s8{background:radial-gradient(ellipse at 20% 50%,#1A1200,#0A0800);}
+#s8 .ga{width:700px;height:700px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.18),transparent 55%);}
+#s8 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s8 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s8 .right{width:380px;flex-shrink:0;}
+#s8 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s8 h2 em{color:var(--gold);font-style:italic;}
+#s8 .cert-desc{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:20px;}
+#s8 .cert-details{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+#s8 .cd-row{display:flex;gap:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;align-items:flex-start;}
+#s8 .cdr-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
+#s8 .cdr-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;}
+#s8 .cdr-desc{font-size:12px;color:var(--grey);line-height:1.4;}
+/* Certificate SVG panel */
+#s8 .cert-preview{background:rgba(255,255,255,.03);border:2px solid rgba(245,166,35,.25);border-radius:10px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;animation:goldPulse 3s ease-in-out infinite;}
+#s8 .cp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;}
+
+/* ══ S9 FEEDBACK ══ */
+#s9{background:var(--navy2);}
+#s9 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:48px;align-items:center;}
+#s9 .left{flex:1;}
+#s9 .right{width:380px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s9 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;}
+#s9 .why-matters{padding:12px 14px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.18);border-radius:8px;margin-bottom:14px;}
+#s9 .wm-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:5px;}
+#s9 .wm-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s9 .feedback-qs{display:flex;flex-direction:column;gap:8px;}
+#s9 .fq-row{padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s9 .fq-row strong{color:var(--white);display:block;margin-bottom:3px;}
+/* Star rating */
+#s9 .star-row{display:flex;gap:6px;margin-top:4px;}
+#s9 .star{font-size:22px;cursor:pointer;color:rgba(255,255,255,.15);transition:color .15s;}
+#s9 .star.lit{color:var(--gold);}
+#s9 .qr-box{padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;text-align:center;}
+#s9 .qr-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:10px;}
+#s9 .qr-code{width:100px;height:100px;background:var(--white);border-radius:6px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;}
+
+/* ══ S10 WHAT NEXT ══ */
+#s10{background:var(--navy);}
+#s10 .ga{width:500px;height:400px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s10 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s10 .next-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s10 .next-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:20px 16px;display:flex;flex-direction:column;gap:10px;transition:all .2s;}
+#s10 .next-card:hover{border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.04);}
+#s10 .nc-icon{font-size:28px;}
+#s10 .nc-title{font-size:14px;font-weight:600;color:var(--white);}
+#s10 .nc-desc{font-size:12px;color:var(--grey);line-height:1.6;flex:1;}
+#s10 .nc-tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;width:fit-content;margin-top:auto;}
+
+/* ══ S11 CLOSING ══ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#1A1200,#0A0800);}
+#s11 .ga{width:800px;height:700px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.16),transparent 55%);}
+#s11 .gb{width:500px;height:400px;bottom:-100px;left:-100px;background:radial-gradient(ellipse,rgba(146,64,14,.1),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--gold),var(--dgold),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;}
+#s11 .done-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .done-label::before{content:'';display:block;width:32px;height:1px;background:var(--gold);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,62px);font-weight:700;color:var(--white);line-height:1.1;margin-bottom:18px;}
+#s11 h2 em{color:var(--gold);font-style:italic;}
+#s11 .closing-line{font-size:16px;color:#7B9AB8;line-height:1.8;max-width:620px;margin-bottom:24px;font-weight:300;}
+#s11 .skill-final{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px;}
+#s11 .sf-row{display:flex;align-items:center;gap:10px;font-size:13px;color:#C8D8E8;padding:7px 12px;background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.12);border-radius:6px;}
+#s11 .sf-check{width:18px;height:18px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--gold);flex-shrink:0;}
+#s11 .footer-strip{padding:14px 20px;background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(16,84,168,.08));border:1px solid rgba(245,166,35,.2);border-radius:8px;display:flex;align-items:center;justify-content:space-between;}
+#s11 .fs-left{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:2px;}
+#s11 .fs-right{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey);letter-spacing:1px;text-align:right;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+<div class="deck" id="deck">
+
+<!-- ══ S1 OPENING ══ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 10 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au">Assessment<br>&amp; <em>Certificate</em></h1>
+    <p class="sub au">Ten sessions. Forty hours. One assessment. Today you demonstrate everything — and leave with a certificate that says you can.</p>
+    <div class="programme-tag au">
+      <span class="tag tag-gold">FINAL DAY</span>
+      <span class="tag tag-gold">20 QUESTIONS</span>
+      <span class="tag tag-gold">60% TO PASS</span>
+      <span class="tag tag-gold">CERTIFICATE TODAY</span>
+    </div>
+    <div class="journey au">
+      <div class="j-label">YOUR 10-DAY JOURNEY</div>
+      <div class="j-row">
+        <span class="j-day done">D1 Safety</span>
+        <span class="j-day done">D2 V/I/R</span>
+        <span class="j-day done">D3 Circuits</span>
+        <span class="j-day done">D4 Plug Top</span>
+        <span class="j-day done">D5 Multimeter</span>
+        <span class="j-day done">D6 Soldering</span>
+        <span class="j-day done">D7 PCB</span>
+        <span class="j-day done">D8 Rework</span>
+        <span class="j-day done">D9 Scenarios</span>
+        <span class="j-day today">D10 Assessment</span>
+      </div>
+    </div>
+  </div>
+  <div class="inst au"><p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p><p>KLE TECHNOLOGICAL UNIVERSITY</p><p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p></div>
+</div>
+
+<!-- ══ S2 WHAT HAPPENS TODAY ══ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">TODAY'S STRUCTURE</span></div>
+      <h2 class="au">Two Parts.<br><span>One Result.</span></h2>
+      <p class="intro au">The assessment has two components, both completed today. A score of 60% or above across both parts earns you the Certificate of Completion.</p>
+      <div class="parts">
+        <div class="part-card au">
+          <div class="pc-num">1</div>
+          <div>
+            <div class="pc-title">Multiple Choice Quiz</div>
+            <div class="pc-desc">20 questions covering all 10 sessions. 4 marks each. Completed individually on a Google Form. No notes, no references.</div>
+            <span class="pc-badge" style="background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--gold);">80 MARKS &middot; ~30 MINUTES</span>
+          </div>
+        </div>
+        <div class="part-card au">
+          <div class="pc-num">2</div>
+          <div>
+            <div class="pc-title">Practical Task</div>
+            <div class="pc-desc">One hands-on task selected by the instructor. Observed and scored in real time. Demonstrates applied competency.</div>
+            <span class="pc-badge" style="background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.3);color:var(--lgreen);">20 MARKS &middot; ~10 MINUTES</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="pass-box au">
+        <div class="pb-label">PASS THRESHOLD</div>
+        <div class="pb-score">60%</div>
+        <div class="pb-desc">Score 60 or above out of 100 total marks across both parts to receive your Certificate of Completion today.</div>
+      </div>
+      <div class="timing-grid au">
+        <div class="tg-cell"><span class="tg-val">20</span><div class="tg-lbl">Questions</div></div>
+        <div class="tg-cell"><span class="tg-val">4</span><div class="tg-lbl">Marks each</div></div>
+        <div class="tg-cell"><span class="tg-val">80</span><div class="tg-lbl">Quiz marks</div></div>
+        <div class="tg-cell"><span class="tg-val">20</span><div class="tg-lbl">Practical marks</div></div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:5px;">CERTIFICATE DELIVERY</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Certificates are emailed automatically to those who pass. Your certificate arrives in your inbox before you leave the room today.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S3 QUIZ STRUCTURE ══ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">PART 1 — QUIZ</span></div>
+      <h2 class="au">What the Quiz<br>Covers</h2>
+      <p class="intro au">20 questions. Every topic from Days 1 through 9 is represented. The quiz tests what you have been doing with your hands for 10 days — not what you have memorised.</p>
+      <div class="topic-rows">
+        <div class="topic-row au"><span class="tr-qs">Q1–Q2</span><span class="tr-name">Safety &amp; PPE</span><span class="tr-days">Day 1</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q3–Q4</span><span class="tr-name">Wiring &amp; Plug Top</span><span class="tr-days">Day 4</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q5–Q6</span><span class="tr-name">Ohm's Law &amp; V/I/R</span><span class="tr-days">Day 2</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q7</span><span class="tr-name">Components &amp; Schematics</span><span class="tr-days">Day 3</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q8–Q10</span><span class="tr-name">Multimeter — DCV, &Omega;, Continuity</span><span class="tr-days">Day 5</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q11–Q15</span><span class="tr-name">Soldering quality, technique, joints</span><span class="tr-days">Day 6–7</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q16–Q17</span><span class="tr-name">Desoldering &amp; Rework</span><span class="tr-days">Day 8</span></div>
+        <div class="topic-row au"><span class="tr-qs">Q18–Q20</span><span class="tr-name">Fault Diagnosis &amp; Safety</span><span class="tr-days">Day 9</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="quiz-tip au">
+        <div class="qt-label">BEFORE YOU BEGIN</div>
+        <div class="qt-text">Read each question completely before selecting. Several questions have two options that sound similar. The difference is the exact word. Take the full 30 minutes — there is no advantage in finishing early.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lgreen);letter-spacing:1px;margin-bottom:5px;">WHAT IS NOT TESTED</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.7;">No trick questions. No calculations beyond Ohm's Law. No component part numbers to memorise. No dates or spec sheet values. Only principles and safe practices.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lred);letter-spacing:1px;margin-bottom:5px;">QUIZ RULES</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.7;">Individual attempt only. No discussion during the quiz. Mobile phones face-down. Notebook closed. Browser tab — only the quiz form.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S4 PRACTICAL TASK ══ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-gold">PART 2 — PRACTICAL</span></div>
+    <h2 class="au">The Practical Task</h2>
+    <p class="sub au">One task per participant, observed by the instructor. You will be assigned one of these three tasks. All are things you have already done this week.</p>
+    <div class="task-grid">
+      <div class="task-card au">
+        <div class="tc-icon">&#x1F50C;</div>
+        <div class="tc-title">Task A — Wire a Plug Top</div>
+        <div class="tc-desc">Wire a 3-pin plug top correctly from a stripped cable. Brown to Live, Blue to Neutral, Green/Yellow to Earth. Tighten all terminals. Replace cover and fuse. Continuity test all three pins.</div>
+        <div class="tc-assessed">Assessed: polarity, termination, fuse, continuity</div>
+      </div>
+      <div class="task-card au">
+        <div class="tc-icon">&#x1F50D;</div>
+        <div class="tc-title">Task B — Diagnose a Fault</div>
+        <div class="tc-desc">Given a pre-faulted breadboard or PCB circuit, use the multimeter to identify the fault, name the root cause, and state the correct fix. You have 10 minutes and the multimeter.</div>
+        <div class="tc-assessed">Assessed: method, diagnosis accuracy, fix proposed</div>
+      </div>
+      <div class="task-card au">
+        <div class="tc-icon">&#x1F9F2;</div>
+        <div class="tc-title">Task C — Measure &amp; Identify</div>
+        <div class="tc-desc">Given a set of three mystery components, identify each using the multimeter and colour code reference. Measure resistance of one, test continuity of another, identify LED polarity on a third.</div>
+        <div class="tc-assessed">Assessed: tool use, identification accuracy, safety</div>
+      </div>
+    </div>
+    <div class="observer-note au">
+      <span style="font-size:20px;flex-shrink:0;">&#x1F4CB;</span>
+      <span>The instructor observes and scores in real time on a 20-point rubric: <strong style="color:#C8D8E8;">safety handling (5), correct technique (10), correct result (5).</strong> You do not need to be fast — you need to be correct and safe.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S5 QUIZ OPEN ══ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">QUIZ IS NOW OPEN</span></div>
+      <h2 class="au">Open the<br><em>Quiz Form</em><br>on Your Device</h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">The instructor will share the quiz link. Open it now. Read the instructions on the form before answering Question 1.</p>
+      <div class="instructions">
+        <div class="inst-row au"><div class="ir-num">1</div><div class="ir-text">Enter your <span>full name</span>, email address, organisation, and batch number exactly as they appear in your registration.</div></div>
+        <div class="inst-row au"><div class="ir-num">2</div><div class="ir-text">Read each question <span>completely</span> before selecting. You cannot go back after submitting.</div></div>
+        <div class="inst-row au"><div class="ir-num">3</div><div class="ir-num" style="min-width:0;width:auto;"></div><div class="ir-text">Use the <span>full 30 minutes</span>. The timer here is for reference. The form does not auto-close.</div></div>
+        <div class="inst-row au"><div class="ir-num">4</div><div class="ir-text">When done, click <span>Submit</span>. Your score and certificate email (if passed) arrives within 5 minutes.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="timer-panel au">
+        <div class="tp-label">QUIZ COUNTDOWN</div>
+        <div class="tp-time" id="quizTimer">30:00</div>
+        <div class="tp-sub" id="quizTimerSub">30 minutes — click Start when everyone is ready</div>
+        <button class="tp-btn" id="quizTimerBtn" onclick="toggleQuizTimer()">Start Timer</button>
+      </div>
+      <div class="score-reference au">
+        <div class="sr-label">QUICK SCORE REFERENCE</div>
+        <div class="sr-row"><span>20 correct</span><span class="sr-val">80 / 80</span></div>
+        <div class="sr-row"><span>15 correct</span><span class="sr-val">60 / 80</span></div>
+        <div class="sr-row"><span>12 correct</span><span class="sr-val">48 / 80</span></div>
+        <div class="sr-row"><span>Pass (quiz only)</span><span class="sr-val">&ge;12 correct</span></div>
+        <div class="sr-row"><span>Pass threshold (combined)</span><span class="sr-val">&ge;60 / 100</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S6 WHILE WAITING ══ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-gold">WHILE SCORES ARE BEING CALCULATED</span></div>
+    <h2 class="au">Ten Days — A Reflection</h2>
+    <p class="sub au">Take 5 minutes. Answer honestly. You do not share this unless you want to.</p>
+    <div class="reflection-grid">
+      <div class="ref-card au">
+        <div class="rc-q">What is the one thing from this programme you will actually use?</div>
+        <div class="rc-prompt">Not the most impressive thing — the most useful thing.</div>
+        <textarea class="rc-input" placeholder="Write your answer here..."></textarea>
+      </div>
+      <div class="ref-card au">
+        <div class="rc-q">Name one moment in the lab that surprised you.</div>
+        <div class="rc-prompt">Something that did not go as expected — in any direction.</div>
+        <textarea class="rc-input" placeholder="Write your answer here..."></textarea>
+      </div>
+      <div class="ref-card au">
+        <div class="rc-q">What would you tell someone considering this programme?</div>
+        <div class="rc-prompt">In one or two sentences. Honest.</div>
+        <textarea class="rc-input" placeholder="Write your answer here..."></textarea>
+      </div>
+      <div class="ref-card au">
+        <div class="rc-q">Before this programme — after this programme.</div>
+        <div class="rc-prompt">Finish both sentences.</div>
+        <textarea class="rc-input" placeholder="Before: I could not...&#10;After: I can..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S7 SCORE REVEAL ══ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">RESULTS</span></div>
+      <h2 class="au">Score Reveal<br>&amp; Batch Board</h2>
+      <p class="intro au">Enter each participant's combined score (quiz + practical) out of 100. The board on the right updates live. Pass is 60 or above.</p>
+      <div class="score-entry au">
+        <div class="se-label">ENTER COMBINED SCORE (out of 100)</div>
+        <div class="se-inputs">
+          <input class="se-input" type="number" id="scoreInput" min="0" max="100" placeholder="72">
+          <span class="se-of">/ 100</span>
+          <button class="se-btn" onclick="checkScore()">Check</button>
+        </div>
+      </div>
+      <div class="result-display" id="resultDisplay">
+        <div class="rd-pct" id="rdPct"></div>
+        <div class="rd-verdict" id="rdVerdict"></div>
+        <div class="rd-note" id="rdNote"></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="batch-board au">
+        <div class="bb-label">BATCH BOARD — CLICK TO MARK</div>
+        <div class="bb-slots" id="batchSlots">
+          <!-- 10 slots generated by JS -->
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;font-size:11px;color:var(--grey);align-items:center;">
+          <span style="width:14px;height:14px;background:rgba(21,128,61,.2);border:1px solid rgba(21,128,61,.4);border-radius:3px;display:inline-block;"></span>Pass
+          <span style="width:14px;height:14px;background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);border-radius:3px;display:inline-block;margin-left:10px;"></span>Re-attempt
+        </div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px;">FOR RE-ATTEMPTS</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Participants who score below 60% are eligible for one re-attempt scheduled within 2 weeks. A failure email with weak topics is sent automatically. They keep their practical score.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S8 CERTIFICATE MOMENT ══ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">CERTIFICATE OF COMPLETION</span></div>
+      <h2 class="au">Your Certificate<br>is <em>on its way.</em></h2>
+      <p class="cert-desc au">For every participant who passed — your certificate has been generated and is being emailed right now. Check your inbox. The certificate includes your name, organisation, batch, score, certificate ID, and both signatures.</p>
+      <div class="cert-details">
+        <div class="cd-row au"><div class="cdr-icon">&#x1F4E7;</div><div><div class="cdr-title">Email delivery</div><div class="cdr-desc">Certificate arrives at the email address you registered with. Check spam if not visible within 10 minutes.</div></div></div>
+        <div class="cd-row au"><div class="cdr-icon">&#x1F194;</div><div><div class="cdr-title">Certificate ID</div><div class="cdr-desc">Format: KLECTIE-EE-2026-[Initials][4-digit]. Keep this ID — it is used for verification by future employers or institutions.</div></div></div>
+        <div class="cd-row au"><div class="cdr-icon">&#x1F5A8;</div><div><div class="cdr-title">Printing</div><div class="cdr-desc">The certificate is print-ready at A4 size. Print on 120gsm or above for best result. The EE Lab can print on request.</div></div></div>
+        <div class="cd-row au"><div class="cdr-icon">&#x1F517;</div><div><div class="cdr-title">LinkedIn</div><div class="cdr-desc">Add it to your LinkedIn profile under Licences &amp; Certifications. Issuing organisation: KLE-CTIE, KLE Technological University.</div></div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <!-- Certificate preview SVG -->
+      <div class="cert-preview">
+        <div class="cp-label">CERTIFICATE PREVIEW</div>
+        <svg viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Border -->
+          <rect x="4" y="4" width="292" height="212" rx="6" fill="rgba(8,17,31,0.95)" stroke="rgba(245,166,35,0.6)" stroke-width="1.5"/>
+          <rect x="8" y="8" width="284" height="204" rx="4" fill="none" stroke="rgba(245,166,35,0.2)" stroke-width="0.5"/>
+          <!-- Top bar -->
+          <rect x="4" y="4" width="292" height="6" rx="3" fill="url(#certGrad)" opacity="0.9"/>
+          <!-- Bottom bar -->
+          <rect x="4" y="210" width="292" height="6" rx="3" fill="url(#certGrad)" opacity="0.9"/>
+          <defs>
+            <linearGradient id="certGrad" x1="0" y1="0" x2="292" y2="0">
+              <stop offset="0%" stop-color="#F5A623"/>
+              <stop offset="50%" stop-color="#1054A8"/>
+              <stop offset="100%" stop-color="#F5A623"/>
+            </linearGradient>
+          </defs>
+          <!-- Logos placeholder -->
+          <rect x="20" y="20" width="36" height="20" rx="3" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.3)" stroke-width="0.5"/>
+          <rect x="244" y="20" width="36" height="20" rx="3" fill="rgba(16,84,168,0.2)" stroke="rgba(96,165,250,0.3)" stroke-width="0.5"/>
+          <!-- Title -->
+          <text x="150" y="36" text-anchor="middle" font-family="Georgia,serif" font-size="11" font-weight="700" fill="rgba(245,166,35,0.8)">Certificate of Completion</text>
+          <!-- Divider -->
+          <rect x="100" y="41" width="100" height="1" rx="0.5" fill="rgba(245,166,35,0.3)"/>
+          <!-- This certifies that -->
+          <text x="150" y="56" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="rgba(200,212,224,0.4)" letter-spacing="2">THIS CERTIFIES THAT</text>
+          <!-- Name -->
+          <text x="150" y="74" text-anchor="middle" font-family="Georgia,serif" font-size="14" font-weight="700" fill="rgba(16,84,168,0.8)">Participant Name</text>
+          <!-- Org -->
+          <text x="150" y="85" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="rgba(200,212,224,0.4)">Organisation</text>
+          <!-- Programme -->
+          <text x="150" y="102" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="rgba(200,212,224,0.6)">has successfully completed the</text>
+          <text x="150" y="114" text-anchor="middle" font-family="Georgia,serif" font-size="10" font-weight="700" fill="rgba(255,255,255,0.85)">Basic Electrical &amp; Electronics</text>
+          <text x="150" y="126" text-anchor="middle" font-family="Georgia,serif" font-size="10" font-weight="700" fill="rgba(255,255,255,0.85)">Training Programme</text>
+          <text x="150" y="136" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="rgba(200,212,224,0.35)" font-style="italic">EE Lab, KLE-CTIE &middot; 2026 &middot; Score: 82%</text>
+          <!-- Signature lines -->
+          <line x1="50" y1="168" x2="130" y2="168" stroke="rgba(200,212,224,0.2)" stroke-width="0.7"/>
+          <line x1="168" y1="168" x2="250" y2="168" stroke="rgba(200,212,224,0.2)" stroke-width="0.7"/>
+          <text x="90"  y="176" text-anchor="middle" font-family="Arial,sans-serif" font-size="6" fill="rgba(200,212,224,0.35)">Lab Assistant</text>
+          <text x="209" y="176" text-anchor="middle" font-family="Arial,sans-serif" font-size="6" fill="rgba(200,212,224,0.35)">CTIE Director</text>
+          <!-- Cert ID -->
+          <rect x="70" y="182" width="160" height="14" rx="3" fill="rgba(16,84,168,0.15)" stroke="rgba(96,165,250,0.3)" stroke-width="0.5"/>
+          <text x="150" y="193" text-anchor="middle" font-family="Courier New,monospace" font-size="7" fill="rgba(96,165,250,0.7)" letter-spacing="1">KLECTIE-EE-2026-XY4821</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S9 FEEDBACK ══ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">FEEDBACK</span></div>
+      <h2 class="au">Before You Leave —<br>Tell Us How We Did</h2>
+      <p class="intro au">This feedback directly shapes the next batch. Your honest rating and comments are the most useful thing you can give us today. Rate each dimension below.</p>
+      <div class="why-matters au">
+        <div class="wm-label">WHY THIS MATTERS</div>
+        <div class="wm-text">The next batch of 10 participants will experience a programme shaped partly by what you say here. If something was unclear, too fast, too slow, or missing — this is the moment to say it.</div>
+      </div>
+      <div class="feedback-qs">
+        <div class="fq-row au">
+          <strong>Overall quality of the programme</strong>
+          <div class="star-row" id="stars1">
+            <span class="star" onclick="rate('stars1',1)">&#x2605;</span><span class="star" onclick="rate('stars1',2)">&#x2605;</span>
+            <span class="star" onclick="rate('stars1',3)">&#x2605;</span><span class="star" onclick="rate('stars1',4)">&#x2605;</span>
+            <span class="star" onclick="rate('stars1',5)">&#x2605;</span>
+          </div>
+        </div>
+        <div class="fq-row au">
+          <strong>Clarity of instruction from the lab assistant</strong>
+          <div class="star-row" id="stars2">
+            <span class="star" onclick="rate('stars2',1)">&#x2605;</span><span class="star" onclick="rate('stars2',2)">&#x2605;</span>
+            <span class="star" onclick="rate('stars2',3)">&#x2605;</span><span class="star" onclick="rate('stars2',4)">&#x2605;</span>
+            <span class="star" onclick="rate('stars2',5)">&#x2605;</span>
+          </div>
+        </div>
+        <div class="fq-row au">
+          <strong>Hands-on practice time — sufficient or not?</strong>
+          <div class="star-row" id="stars3">
+            <span class="star" onclick="rate('stars3',1)">&#x2605;</span><span class="star" onclick="rate('stars3',2)">&#x2605;</span>
+            <span class="star" onclick="rate('stars3',3)">&#x2605;</span><span class="star" onclick="rate('stars3',4)">&#x2605;</span>
+            <span class="star" onclick="rate('stars3',5)">&#x2605;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="qr-box au">
+        <div class="qr-label">SCAN TO SUBMIT FEEDBACK FORM</div>
+        <div class="qr-code">QR Code<br>(paste your<br>form link)</div>
+        <p style="margin-top:10px;font-size:11px;color:var(--grey);line-height:1.5;">Or open the feedback link shared by the instructor. Takes under 2 minutes.</p>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px;">WHAT TO COMMENT ON</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="font-size:12px;color:#C8D8E8;">Which day was most valuable and why?</div>
+          <div style="font-size:12px;color:#C8D8E8;">What topic needed more time?</div>
+          <div style="font-size:12px;color:#C8D8E8;">What would you add to the programme?</div>
+          <div style="font-size:12px;color:#C8D8E8;">Would you recommend it? To whom?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S10 WHAT NEXT ══ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-gold">WHAT COMES NEXT</span></div>
+    <h2 class="au">You Leave Here<br>with More Than a Certificate</h2>
+    <p class="sub au">Six directions you can take from today. None of them require anything you do not already have.</p>
+    <div class="next-grid">
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F527;</div>
+        <div class="nc-title">Use it in your work</div>
+        <div class="nc-desc">Your lab equipment, your plug tops, your measurement instruments. You now have the vocabulary and the technique to interact with them confidently and safely.</div>
+        <span class="nc-tag" style="background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--gold);">IMMEDIATE</span>
+      </div>
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F4A1;</div>
+        <div class="nc-title">Teach one person</div>
+        <div class="nc-desc">The single most effective way to consolidate a skill is to teach it. Find one colleague, one team member, one person in your office who would benefit from knowing how to wire a plug correctly.</div>
+        <span class="nc-tag" style="background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.25);color:var(--lgreen);">THIS WEEK</span>
+      </div>
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F9EA;</div>
+        <div class="nc-title">Continue at EE Lab</div>
+        <div class="nc-desc">Advanced soldering, surface mount components, PCB design with KiCad, sensor integration with Arduino. The EE Lab runs further programmes for those who want to go deeper.</div>
+        <span class="nc-tag" style="background:rgba(16,84,168,.15);border:1px solid rgba(96,165,250,.25);color:var(--lblue);">ADVANCED PATH</span>
+      </div>
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F4C4;</div>
+        <div class="nc-title">Add to your profile</div>
+        <div class="nc-desc">LinkedIn: Licences &amp; Certifications &rarr; Basic Electrical &amp; Electronics Training, KLE-CTIE. Your certificate ID is the credential. It is real, issued, and verifiable.</div>
+        <span class="nc-tag" style="background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--gold);">TODAY</span>
+      </div>
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F91D;</div>
+        <div class="nc-title">Refer someone from your startup</div>
+        <div class="nc-desc">If you are at an incubated startup at KLE-CTIE — does your co-founder, your hardware team, your lab manager need this programme? The next batch starts soon.</div>
+        <span class="nc-tag" style="background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.25);color:var(--lgreen);">NEXT BATCH</span>
+      </div>
+      <div class="next-card au">
+        <div class="nc-icon">&#x1F4AC;</div>
+        <div class="nc-title">Stay connected</div>
+        <div class="nc-desc">The EE Lab WhatsApp group stays active after the programme. Questions, troubleshooting help, notifications for future events. The lab assistant is reachable.</div>
+        <span class="nc-tag" style="background:rgba(16,84,168,.15);border:1px solid rgba(96,165,250,.25);color:var(--lblue);">ONGOING</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ S11 CLOSING ══ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="done-label au">PROGRAMME COMPLETE &nbsp;&middot;&nbsp; KLE-CTIE &nbsp;&middot;&nbsp; EE LAB</div>
+    <h2 class="au">Ten days ago you could not<br>wire a plug. Today you built<br>a <em>working circuit</em> from scratch.</h2>
+    <p class="closing-line au">That distance — from zero to competent — is real. It was earned session by session, joint by joint, fault by diagnosed fault. The certificate formalises it. The skill lives with you.</p>
+    <div class="skill-final au">
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Applied the 5 safety rules in a live lab</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Wired a 3-pin plug top correctly</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Used a multimeter for 4 measurement types</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Soldered clean through-hole joints</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Assembled a complete PCB circuit</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Desoldered and reworked components</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Diagnosed 6 real-world electrical faults</div>
+      <div class="sf-row"><div class="sf-check">&#x2713;</div>Passed a formal competency assessment</div>
+    </div>
+    <div class="footer-strip au">
+      <div class="fs-left">MADE WITH &#x2764; ~rhc &nbsp;&middot;&nbsp; EE LAB, KLE-CTIE</div>
+      <div class="fs-right">KLE-CTIE &nbsp;&middot;&nbsp; KLE TECHNOLOGICAL UNIVERSITY<br>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA &nbsp;&middot;&nbsp; 580021</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL=11; let cur=0, notesOpen=false;
+let quizSecs=1800, quizRunning=false, quizInterval=null;
+const batchState=Array(10).fill(0); // 0=empty, 1=pass, 2=fail
+
+const NOTES=[
+  `<strong>Open with full presence — no slide first, words first.</strong> Stand at the front. "This is Day 10. The last session. After today, you either leave with a certificate or with a date for your re-attempt. Either way, you leave more capable than you arrived." Let the room settle. Then advance to the slides. <em>The journey row at the bottom of this slide is the programme in miniature. Gesture to it: "Ten days. Every one of them completed by everyone in this room. That is not nothing."</em>`,
+  `<strong>Walk through the structure clearly before any quiz begins.</strong> "Two parts. Quiz first — 30 minutes, individual, on your device. Then practical — one task each, 10 minutes, I observe. Combined score out of 100. 60 to pass." Answer questions now, before the quiz opens. Once the quiz is live, no discussion. <em>The certificate delivery point is worth emphasis: "Your certificate arrives in your inbox before you leave this room. Not next week. Today. If you pass — it is already being generated the moment you submit your quiz."</em>`,
+  `<strong>The topic breakdown is a last-chance orientation — not revision.</strong> Read through the rows together. "Questions 11 to 15 are all soldering. That is five questions on what you spent three days doing. If you understand what a good joint looks like and why a cold joint is dangerous — those five questions answer themselves." <em>The quiz rules slide matters: enforce them visibly. Ask participants to put phones face down before you share the quiz link. The act of doing it in the room together removes the ambiguity about whether they should.</em>`,
+  `<strong>Assign practical tasks before the quiz begins.</strong> Tell each participant their task privately or post the assignment on the whiteboard. This way, participants know during the quiz which practical they will face — reducing anxiety and letting them mentally prepare. <em>The scoring rubric: 5 marks for safety (PPE, correct handling, no unsafe acts), 10 marks for correct technique (correct wire colours, correct probe placement, correct tool use), 5 marks for correct result (fuse passes, measurement correct, component identified correctly). A participant who uses correct technique but gets an incorrect result still scores 15/20 — technique matters more than outcome.</em>`,
+  `<strong>Share the quiz link now. Watch the room as participants open it.</strong> Walk around before starting the timer — confirm every participant has the form open. Look for people still loading, phone issues, typing errors in the email field. Fix these before the timer starts. <em>The 30-minute countdown on this slide is for instructor reference — start it when the last participant has the form open, not when you advance to this slide. The form itself has no time limit — the timer is a session management tool, not a hard cutoff.</em>`,
+  `<strong>This slide is the breathing space between quiz submission and results.</strong> "Forms are submitted. Scores are being calculated. While we wait — take 5 minutes. These four questions don't have wrong answers. Write honestly." Give the room silence. Do not fill it. <em>If some participants finish the reflection early: invite them to share verbally with the group — but do not require it. The best debrief moments come voluntarily. "Would anyone like to share what they wrote for the first question?" is enough of an opening.</em>`,
+  `<strong>The score entry and batch board make results visible and participatory.</strong> Call each participant's name, announce their combined score, enter it, click the appropriate slot on the batch board. A pass slot turns green. Make it a moment — pause slightly on each name before revealing. <em>If a participant does not pass: be matter-of-fact, not apologetic. "You scored 54. Re-attempt is scheduled for [date]. Your failure email with the specific topics to review will arrive shortly. Your practical score carries forward — you only need to re-take the quiz." Say it clearly and move on. Do not dwell.</em>`,
+  `<strong>The certificate moment is the emotional culmination of 10 days.</strong> If possible, project a participant's inbox live (with permission) to show the certificate arriving in real time. The sight of a real certificate appearing in an inbox — with their name, their score, their certificate ID — is the most powerful teaching moment of the programme. It makes the outcome concrete. <em>After showing the certificate: "Check your LinkedIn before you leave today. Add it under Licences and Certifications. The issuing organisation is KLE-CTIE, KLE Technological University. The credential ID is on your certificate. It is real, it is issued, and it is verifiable."</em>`,
+  `<strong>Feedback is not optional — it is a programme obligation.</strong> Share the feedback form link or QR code. "This takes two minutes. The next batch of 10 people will have a better experience because of what you write here. That is the only reason I am asking." Wait in the room while they fill it — do not collect it later or send a follow-up link. Completion rates drop to under 30% when feedback is deferred. <em>The star rating interaction on this slide is for live room display — you can click stars as participants call out their ratings verbally for a quick show-of-hands version of the feedback if the form is not immediately accessible.</em>`,
+  `<strong>The "what next" slide should be delivered conversationally, not read.</strong> Walk through each card and personalise it to the room: "For those of you from pharmaceutical companies — your equipment has been maintained by someone with this skill. Now that person could be you, or someone you train." For the startup founders: "If your startup needs a hardware prototype built — you now have the foundational knowledge to understand what your engineer is building. That is worth more than the certificate." <em>The "teach one person" card is the most important long-term action. A skill taught is a skill retained. Encourage participants to identify that one person before they leave the room.</em>`,
+  `<strong>The closing is the final moment — deliver it facing the room, not the screen.</strong> Read the title line slowly: "Ten days ago you could not wire a plug. Today you built a working circuit from scratch." Pause. "That distance is real. It was earned." Then gesture to the skill list: "Every item on that list — you did it. With your hands. In this lab." <em>End with: "The lab is open. You are always welcome back. If a piece of equipment fails at your workplace, or you have a question about something electrical — you know where to find me." Then: "Congratulations." Close the laptop. Do not advance to another slide.</em>`
+];
+
+const slides=document.querySelectorAll('.slide');
+const dotsEl=document.getElementById('dots');
+for(let i=0;i<TOTAL;i++){const d=document.createElement('button');d.className='dot'+(i===0?' active':'');d.onclick=()=>goTo(i);dotsEl.appendChild(d);}
+function goTo(n){slides[cur].classList.remove('active');slides[cur].classList.add('out');const prev=cur;setTimeout(()=>slides[prev].classList.remove('out'),600);cur=n;slides[cur].classList.add('active');updateUI();}
+function go(dir){const n=cur+dir;if(n>=0&&n<TOTAL)goTo(n);}
+function updateUI(){document.getElementById('slideNum').textContent=(cur+1)+' / '+TOTAL;document.getElementById('topCount').textContent=String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');document.getElementById('prevBtn').disabled=cur===0;document.getElementById('nextBtn').disabled=cur===TOTAL-1;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));document.getElementById('notesBody').innerHTML=NOTES[cur];}
+function toggleNotes(){notesOpen=!notesOpen;document.getElementById('notesPanel').classList.toggle('open',notesOpen);document.getElementById('notesBtn').textContent=notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';}
+
+// Quiz timer
+function toggleQuizTimer(){
+  if(quizRunning){clearInterval(quizInterval);quizRunning=false;document.getElementById('quizTimerBtn').textContent='Resume';}
+  else{
+    if(quizSecs<=0){quizSecs=1800;}
+    quizRunning=true;document.getElementById('quizTimerBtn').textContent='Pause';
+    quizInterval=setInterval(()=>{
+      quizSecs--;
+      const m=Math.floor(quizSecs/60),s=quizSecs%60;
+      const el=document.getElementById('quizTimer');
+      el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      el.className='tp-time'+(quizSecs<=300?' warn':'');
+      document.getElementById('quizTimerSub').textContent=quizSecs<=300?'Less than 5 minutes remaining':''+m+' minutes remaining';
+      if(quizSecs<=0){clearInterval(quizInterval);quizRunning=false;el.textContent='TIME';document.getElementById('quizTimerBtn').textContent='Reset';quizSecs=1800;}
+    },1000);
+  }
+}
+
+// Score checker
+function checkScore(){
+  const val=parseInt(document.getElementById('scoreInput').value);
+  const el=document.getElementById('resultDisplay');
+  if(isNaN(val)||val<0||val>100){el.style.display='none';return;}
+  const pass=val>=60;
+  el.className='result-display '+(pass?'pass':'fail');
+  el.style.display='block';
+  document.getElementById('rdPct').textContent=val+'%';
+  document.getElementById('rdVerdict').textContent=pass?'PASSED \u2713':'RE-ATTEMPT REQUIRED';
+  document.getElementById('rdNote').textContent=pass
+    ?'Certificate emailed automatically. Certificate ID generated.'
+    :'Score below 60%. Re-attempt eligible within 2 weeks. Failure email with weak topics sent automatically.';
+}
+
+// Batch board
+(function buildBatchBoard(){
+  const container=document.getElementById('batchSlots');
+  if(!container)return;
+  for(let i=0;i<10;i++){
+    const slot=document.createElement('div');
+    slot.className='bb-slot';slot.id='slot'+i;slot.textContent='P'+(i+1);
+    slot.onclick=()=>{
+      batchState[i]=(batchState[i]+1)%3;
+      slot.className='bb-slot'+(batchState[i]===1?' pass':batchState[i]===2?' fail':'');
+      slot.textContent=batchState[i]===1?'\u2713':batchState[i]===2?'\u2715':'P'+(i+1);
+    };
+    container.appendChild(slot);
+  }
+})();
+
+// Star ratings
+function rate(id,n){
+  document.querySelectorAll('#'+id+' .star').forEach((s,i)=>{s.classList.toggle('lit',i<n);});
+}
+
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES \u2191';}
+});
+const cursorEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.part-card,.task-card,.next-card,.topic-row,.bb-slot,.star,.inst-row').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
