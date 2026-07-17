@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 3 — Circuit Diagrams & Components | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:    #08111F;
+  --navy2:   #0D1C30;
+  --orange:  #D45500;
+  --lorange: #FB923C;
+  --amber:   #F5A623;
+  --lgold:   #FFD166;
+  --cream:   #FFF7ED;
+  --white:   #FFFFFF;
+  --grey:    #6B7E96;
+  --lgrey:   #C8D4E0;
+  --blue:    #1054A8;
+  --teal:    #0891B2;
+  --red:     #C8352B;
+  --green:   #0A7040;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#04090F;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+/* ── CURSOR ── */
+.cursor{width:10px;height:10px;background:var(--lorange);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(251,146,60,.25);}
+
+/* ── ENGINE ── */
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+/* ── NAV ── */
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(212,85,0,.15);color:var(--lorange);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lorange);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+/* ── NOTES ── */
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lorange);border-color:rgba(212,85,0,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(212,85,0,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(212,85,0,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lorange);font-style:normal;}
+
+/* ── SHARED ── */
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-org{background:rgba(212,85,0,.15);border:1px solid rgba(212,85,0,.35);color:var(--lorange);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);color:var(--amber);}
+.tag-blue{background:rgba(16,84,168,.2);border:1px solid rgba(39,121,212,.4);color:#7FB5FF;}
+.tag-red{background:rgba(200,53,43,.12);border:1px solid rgba(200,53,43,.35);color:#FF8A83;}
+.tag-grn{background:rgba(10,112,64,.12);border:1px solid rgba(10,112,64,.35);color:#52C98A;}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+
+/* ══════════════════════════════
+   SLIDE 1 — OPENING
+══════════════════════════════ */
+#s1{background:var(--navy);}
+#s1 .ga{width:500px;height:500px;top:-150px;right:-100px;background:radial-gradient(circle,rgba(212,85,0,.18),transparent 65%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(245,166,35,.1),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lorange),var(--orange),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lorange);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lorange);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,76px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lorange);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:32px;font-weight:300;}
+#s1 .recap-q{padding:16px 20px;background:rgba(212,85,0,.07);border:1px solid rgba(212,85,0,.2);border-left:3px solid var(--orange);border-radius:0 6px 6px 0;font-size:13px;color:#C8D8E8;max-width:540px;}
+#s1 .recap-q strong{color:var(--lorange);}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══════════════════════════════
+   SLIDE 2 — WHAT IS A SCHEMATIC
+══════════════════════════════ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(212,85,0,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:52px 48px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lorange);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:24px;}
+#s2 .compare{display:flex;flex-direction:column;gap:12px;}
+#s2 .cmp-row{display:flex;gap:14px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;align-items:flex-start;}
+#s2 .cmp-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
+#s2 .cmp-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s2 .cmp-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s2 .right{padding:40px 44px;display:flex;align-items:center;justify-content:center;}
+#s2 .rules-of-schematic{display:flex;flex-direction:column;gap:10px;width:100%;}
+#s2 .rule-item{display:flex;gap:12px;padding:12px 14px;background:rgba(212,85,0,.06);border:1px solid rgba(212,85,0,.15);border-radius:8px;align-items:flex-start;transition:all .2s;}
+#s2 .rule-item:hover{background:rgba(212,85,0,.12);border-color:rgba(212,85,0,.3);}
+#s2 .rule-num{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:rgba(212,85,0,.4);line-height:1;flex-shrink:0;min-width:24px;}
+#s2 .rule-text{font-size:13px;color:#C8D8E8;line-height:1.5;}
+#s2 .rule-sub{font-size:11px;color:var(--grey);margin-top:3px;}
+
+/* ══════════════════════════════
+   SLIDE 3 — 6 CORE SYMBOLS
+══════════════════════════════ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(212,85,0,.1),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s3 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s3 .sym-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;flex:1;}
+#s3 .sym-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;transition:all .2s;cursor:default;}
+#s3 .sym-card:hover{border-color:rgba(212,85,0,.4);background:rgba(212,85,0,.06);transform:translateY(-3px);}
+#s3 .sym-svg{width:80px;height:60px;display:flex;align-items:center;justify-content:center;}
+#s3 .sym-name{font-size:12px;font-weight:600;color:var(--white);text-align:center;}
+#s3 .sym-unit{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:1px;}
+#s3 .sym-desc{font-size:11px;color:var(--grey);text-align:center;line-height:1.4;}
+
+/* ══════════════════════════════
+   SLIDE 4 — RESISTORS
+══════════════════════════════ */
+#s4{background:var(--navy2);}
+#s4 .ga{width:400px;height:400px;top:-80px;left:-60px;background:radial-gradient(circle,rgba(245,166,35,.08),transparent 60%);}
+#s4 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s4 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s4 .right{width:380px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s4 h2{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s4 h2 em{color:var(--amber);font-style:italic;}
+#s4 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:18px;}
+#s4 .types-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:2px;margin-bottom:10px;}
+#s4 .type-card{display:flex;gap:14px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;align-items:flex-start;transition:all .2s;}
+#s4 .type-card:hover{border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.04);}
+#s4 .tc-icon{font-size:26px;flex-shrink:0;}
+#s4 .tc-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s4 .tc-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+#s4 .read-box{padding:14px 16px;background:rgba(212,85,0,.07);border:1px solid rgba(212,85,0,.2);border-radius:8px;}
+#s4 .rb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:1px;margin-bottom:8px;}
+#s4 .rb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════════
+   SLIDE 5 — CAPACITORS
+══════════════════════════════ */
+#s5{background:var(--navy);}
+#s5 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(212,85,0,.1),transparent 60%);}
+#s5 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s5 .left{flex:1;}
+#s5 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s5 h2{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s5 h2 em{color:var(--lorange);font-style:italic;}
+#s5 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s5 .cap-types{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+#s5 .cap-card{padding:14px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+#s5 .cap-card.elec{background:rgba(212,85,0,.08);border:1px solid rgba(212,85,0,.2);}
+#s5 .cap-card.cer{background:rgba(8,145,178,.07);border:1px solid rgba(8,145,178,.2);}
+#s5 .cap-name{font-size:12px;font-weight:600;color:var(--white);}
+#s5 .cap-desc{font-size:11px;color:var(--grey);line-height:1.4;}
+#s5 .cap-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;}
+#s5 .cap-card.elec .cap-badge{background:rgba(212,85,0,.15);color:var(--lorange);}
+#s5 .cap-card.cer .cap-badge{background:rgba(8,145,178,.15);color:#22D3EE;}
+#s5 .warning-box{padding:12px 16px;background:rgba(200,53,43,.08);border:1px solid rgba(200,53,43,.2);border-left:3px solid var(--red);border-radius:0 6px 6px 0;}
+#s5 .wb-label{font-family:'DM Mono',monospace;font-size:10px;color:#FF8A83;letter-spacing:1px;margin-bottom:5px;}
+#s5 .wb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s5 .charge-box{padding:14px 16px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;}
+#s5 .cb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);letter-spacing:1px;margin-bottom:8px;}
+#s5 .cb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════════
+   SLIDE 6 — LEDs & DIODES
+══════════════════════════════ */
+#s6{background:var(--navy2);}
+#s6 .ga{width:500px;height:400px;bottom:-100px;left:-80px;background:radial-gradient(ellipse,rgba(212,85,0,.1),transparent 60%);}
+#s6 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s6 .left{flex:1;}
+#s6 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+#s6 h2{font-family:'Cormorant Garamond',serif;font-size:50px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+#s6 h2 em{color:var(--lorange);font-style:italic;}
+#s6 .def{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:16px;}
+#s6 .polarity-box{padding:14px 16px;background:rgba(212,85,0,.07);border:1px solid rgba(212,85,0,.2);border-radius:8px;margin-bottom:12px;}
+#s6 .pb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:1px;margin-bottom:10px;}
+#s6 .pol-row{display:flex;gap:10px;margin-bottom:6px;align-items:center;}
+#s6 .pol-sym{font-size:20px;font-weight:700;width:24px;text-align:center;flex-shrink:0;}
+#s6 .pol-text{font-size:13px;color:#C8D8E8;}
+#s6 .pol-sub{font-size:11px;color:var(--grey);}
+#s6 .led-colors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+#s6 .led-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+#s6 .led-dot-sm{width:22px;height:22px;border-radius:50%;}
+#s6 .led-name{font-size:11px;color:var(--white);font-weight:500;}
+#s6 .led-vf{font-family:'DM Mono',monospace;font-size:9px;color:var(--grey);}
+#s6 .diode-box{padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+#s6 .db-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:1px;margin-bottom:6px;}
+#s6 .db-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══════════════════════════════
+   SLIDE 7 — SWITCHES RELAYS TRANSISTORS
+══════════════════════════════ */
+#s7{background:var(--navy);}
+#s7 .ga{width:500px;height:400px;top:-80px;right:-80px;background:radial-gradient(circle,rgba(212,85,0,.1),transparent 60%);}
+#s7 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s7 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s7 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s7 .comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;flex:1;}
+#s7 .comp-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:22px 20px;display:flex;flex-direction:column;gap:12px;transition:all .2s;}
+#s7 .comp-card:hover{border-color:rgba(212,85,0,.35);background:rgba(212,85,0,.05);transform:translateY(-2px);}
+#s7 .cc-icon{font-size:36px;}
+#s7 .cc-name{font-size:16px;font-weight:600;color:var(--white);}
+#s7 .cc-type{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:1px;}
+#s7 .cc-desc{font-size:12px;color:var(--grey);line-height:1.6;}
+#s7 .cc-fact{margin-top:auto;padding:8px 12px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:6px;font-size:11px;color:var(--lgold);line-height:1.5;}
+
+/* ══════════════════════════════
+   SLIDE 8 — READING A FULL CIRCUIT
+══════════════════════════════ */
+#s8{background:var(--navy2);}
+#s8 .ga{width:500px;height:400px;top:-80px;right:-60px;background:radial-gradient(circle,rgba(212,85,0,.1),transparent 60%);}
+#s8 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:44px;align-items:center;}
+#s8 .left{width:340px;flex-shrink:0;}
+#s8 .right{flex:1;display:flex;align-items:center;justify-content:center;}
+#s8 h2{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s8 .intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:20px;}
+#s8 .legend{display:flex;flex-direction:column;gap:8px;}
+#s8 .leg-row{display:flex;gap:10px;align-items:center;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;cursor:pointer;transition:all .2s;}
+#s8 .leg-row:hover, #s8 .leg-row.hi{background:rgba(212,85,0,.1);border-color:rgba(212,85,0,.3);}
+#s8 .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+#s8 .leg-name{font-size:12px;font-weight:600;color:var(--white);}
+#s8 .leg-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey);margin-left:auto;}
+/* Interactive SVG schematic */
+#s8 .schematic-wrap{width:100%;max-width:440px;}
+#s8 .schematic-wrap svg .comp-hi{stroke:var(--lorange)!important;stroke-width:2.5!important;}
+#s8 .schematic-wrap svg .comp-hi-fill{fill:rgba(212,85,0,.2)!important;}
+
+/* ══════════════════════════════
+   SLIDE 9 — SORTING CHALLENGE
+══════════════════════════════ */
+#s9{background:radial-gradient(ellipse at 20% 50%,#0D1C30,#08111F);}
+#s9 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(212,85,0,.12),transparent 55%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:48px;align-items:center;}
+#s9 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s9 .right{width:320px;flex-shrink:0;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s9 h2 span{color:var(--lorange);}
+#s9 .task-intro{font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:22px;}
+#s9 .task-steps{display:flex;flex-direction:column;gap:10px;}
+#s9 .t-step{display:flex;gap:14px;align-items:flex-start;}
+#s9 .tn{width:28px;height:28px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+#s9 .tt{font-size:13px;color:var(--white);line-height:1.6;}
+#s9 .tt span{color:var(--lorange);font-weight:600;}
+/* Timer panel */
+#s9 .timer-panel{background:rgba(212,85,0,.07);border:1px solid rgba(212,85,0,.2);border-radius:12px;padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+#s9 .t-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lorange);letter-spacing:2px;}
+#s9 .t-num{font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:700;color:var(--lorange);line-height:1;transition:color .3s;}
+#s9 .t-sub{font-size:13px;color:var(--grey);}
+#s9 .t-btn{padding:10px 28px;background:var(--orange);color:var(--white);border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+#s9 .t-btn:hover{background:var(--lorange);}
+#s9 .component-list{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;}
+#s9 .cl-item{font-size:11px;color:var(--grey);padding:4px 8px;background:rgba(255,255,255,.03);border-radius:4px;}
+
+/* ══════════════════════════════
+   SLIDE 10 — DEBRIEF
+══════════════════════════════ */
+#s10{background:var(--navy);}
+#s10 .ga{width:400px;height:400px;bottom:-80px;right:-60px;background:radial-gradient(circle,rgba(212,85,0,.1),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s10 .sub{font-size:14px;color:var(--grey);margin-bottom:24px;}
+#s10 .mistake-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s10 .mk-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px 16px;display:flex;flex-direction:column;gap:8px;transition:all .2s;}
+#s10 .mk-card:hover{border-color:rgba(212,85,0,.3);background:rgba(212,85,0,.04);}
+#s10 .mk-icon{font-size:26px;}
+#s10 .mk-title{font-size:13px;font-weight:600;color:var(--white);}
+#s10 .mk-wrong{font-size:12px;color:#FF8A83;line-height:1.5;margin-bottom:4px;}
+#s10 .mk-right{font-size:12px;color:#52C98A;line-height:1.5;}
+#s10 .score-box{margin-top:16px;padding:12px 18px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;display:flex;align-items:center;gap:14px;font-size:13px;color:#C8D8E8;}
+
+/* ══════════════════════════════
+   SLIDE 11 — CLOSING
+══════════════════════════════ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1C30,#08111F);}
+#s11 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(212,85,0,.12),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(245,166,35,.07),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lorange),var(--orange),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lorange);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lorange);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(38px,5vw,58px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lorange);font-style:italic;}
+#s11 .can-do{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+#s11 .cd-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8;}
+#s11 .cd-check{width:20px;height:20px;background:rgba(212,85,0,.15);border:1px solid rgba(212,85,0,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lorange);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;}
+#s11 .tomorrow-box strong{color:var(--lorange);}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════════
+     SLIDE 1 — OPENING
+══════════════════════════════ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 3 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au">Circuit <em>Diagrams</em><br>&amp; Component<br>Identification</h1>
+    <p class="sub au">Today you will learn to read the language of electronics — the schematic. By the end, you will identify 10 components by sight and sort them correctly in a timed challenge.</p>
+    <div class="recap-q au">
+      <strong>Quick Recap:</strong> From Day 2 &mdash; if V = 9V and R = 470&Omega;, what is the current flowing? Take 30 seconds. Calculate on paper.
+    </div>
+  </div>
+  <div class="inst au">
+    <p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p>
+    <p>KLE TECHNOLOGICAL UNIVERSITY</p>
+    <p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 2 — WHAT IS A SCHEMATIC
+══════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-org">THE SCHEMATIC</span></div>
+      <h2 class="au">A map,<br>not a <span>photograph.</span></h2>
+      <p class="intro au">A circuit schematic is a standardised diagram that shows how components are electrically connected. It tells you the relationships between parts — not where they physically sit on a board.</p>
+      <div class="compare">
+        <div class="cmp-row au">
+          <div class="cmp-icon">&#x1F4F7;</div>
+          <div>
+            <div class="cmp-title">A photograph of a circuit</div>
+            <div class="cmp-desc">Shows physical placement, wire routing, component colours and sizes. Hard to follow electrically.</div>
+          </div>
+        </div>
+        <div class="cmp-row au">
+          <div class="cmp-icon">&#x1F5FA;</div>
+          <div>
+            <div class="cmp-title">A schematic of the same circuit</div>
+            <div class="cmp-desc">Shows symbols and connections only. Instantly readable by any engineer or technician worldwide. The universal language.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="rules-of-schematic">
+        <div class="au"><span class="tag tag-gold">FOUR RULES OF SCHEMATICS</span></div>
+        <div class="rule-item au">
+          <div class="rule-num">1</div>
+          <div>
+            <div class="rule-text">Every component has a standard symbol</div>
+            <div class="rule-sub">Resistors, LEDs, capacitors — each has one universal drawing. Same in India, Germany, Japan.</div>
+          </div>
+        </div>
+        <div class="rule-item au">
+          <div class="rule-num">2</div>
+          <div>
+            <div class="rule-text">Lines are wires — connections</div>
+            <div class="rule-sub">A line between two symbols means they are electrically connected. A break means they are not.</div>
+          </div>
+        </div>
+        <div class="rule-item au">
+          <div class="rule-num">3</div>
+          <div>
+            <div class="rule-text">Polarity markers matter</div>
+            <div class="rule-sub">+ and &minus; signs, arrows on diodes, longer legs on LEDs — they all indicate direction of connection.</div>
+          </div>
+        </div>
+        <div class="rule-item au">
+          <div class="rule-num">4</div>
+          <div>
+            <div class="rule-text">Values are written next to symbols</div>
+            <div class="rule-sub">470&Omega;, 100&micro;F, 5V — the number tells you the specification of that component in the circuit.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 3 — 6 CORE SYMBOLS
+══════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-org">THE SIX SYMBOLS YOU MUST KNOW</span></div>
+    <h2 class="au">The Core Vocabulary</h2>
+    <p class="sub au">These six symbols appear in almost every circuit you will ever read. Learn their shapes — not their names first.</p>
+    <div class="sym-grid">
+
+      <!-- Resistor -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="5" y1="30" x2="20" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <rect x="20" y="20" width="40" height="20" rx="3" fill="none" stroke="#FB923C" stroke-width="2"/>
+            <line x1="60" y1="30" x2="75" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="sym-name">Resistor</div>
+        <div class="sym-unit">&Omega; &mdash; Ohms</div>
+        <div class="sym-desc">Limits current flow. Protects components.</div>
+      </div>
+
+      <!-- Capacitor -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="5" y1="30" x2="32" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <line x1="32" y1="14" x2="32" y2="46" stroke="#FB923C" stroke-width="2.5"/>
+            <line x1="48" y1="14" x2="48" y2="46" stroke="#FB923C" stroke-width="2.5"/>
+            <line x1="48" y1="30" x2="75" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="sym-name">Capacitor</div>
+        <div class="sym-unit">F &mdash; Farads</div>
+        <div class="sym-desc">Stores electrical charge. Filters signals.</div>
+      </div>
+
+      <!-- LED -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="5" y1="30" x2="22" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <polygon points="22,15 22,45 50,30" fill="rgba(255,200,0,0.2)" stroke="#FFCC00" stroke-width="2"/>
+            <line x1="50" y1="15" x2="50" y2="45" stroke="#FFCC00" stroke-width="2"/>
+            <line x1="50" y1="30" x2="75" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <line x1="54" y1="14" x2="62" y2="6" stroke="#FFCC00" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="60" y1="18" x2="68" y2="10" stroke="#FFCC00" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="sym-name">LED</div>
+        <div class="sym-unit">V<sub>f</sub> &mdash; Forward Voltage</div>
+        <div class="sym-desc">Emits light when current flows through it.</div>
+      </div>
+
+      <!-- Switch -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="5" y1="30" x2="22" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <circle cx="22" cy="30" r="3" fill="#FB923C"/>
+            <circle cx="58" cy="30" r="3" fill="#FB923C"/>
+            <line x1="22" y1="30" x2="58" y2="18" stroke="#FB923C" stroke-width="2" stroke-linecap="round"/>
+            <line x1="58" y1="30" x2="75" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="sym-name">Switch</div>
+        <div class="sym-unit">SPST / SPDT</div>
+        <div class="sym-desc">Opens or closes a circuit path manually.</div>
+      </div>
+
+      <!-- Battery -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="5" y1="30" x2="25" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <line x1="25" y1="18" x2="25" y2="42" stroke="#EAB308" stroke-width="3"/>
+            <line x1="35" y1="22" x2="35" y2="38" stroke="#EAB308" stroke-width="1.5"/>
+            <line x1="45" y1="18" x2="45" y2="42" stroke="#EAB308" stroke-width="3"/>
+            <line x1="55" y1="22" x2="55" y2="38" stroke="#EAB308" stroke-width="1.5"/>
+            <line x1="55" y1="30" x2="75" y2="30" stroke="#C8D4E0" stroke-width="2"/>
+            <text x="22" y="15" font-family="DM Mono,monospace" font-size="10" fill="#EAB308">+</text>
+            <text x="68" y="15" font-family="DM Mono,monospace" font-size="10" fill="#6B7E96">&minus;</text>
+          </svg>
+        </div>
+        <div class="sym-name">Battery</div>
+        <div class="sym-unit">V &mdash; Volts</div>
+        <div class="sym-desc">Voltage source. Long line = +, short = &minus;.</div>
+      </div>
+
+      <!-- Wire / Ground -->
+      <div class="sym-card au">
+        <div class="sym-svg">
+          <svg viewBox="0 0 80 60" fill="none" width="80" height="60">
+            <line x1="40" y1="8" x2="40" y2="32" stroke="#C8D4E0" stroke-width="2"/>
+            <line x1="22" y1="32" x2="58" y2="32" stroke="#C8D4E0" stroke-width="2.5"/>
+            <line x1="28" y1="40" x2="52" y2="40" stroke="#C8D4E0" stroke-width="1.5"/>
+            <line x1="34" y1="48" x2="46" y2="48" stroke="#C8D4E0" stroke-width="1"/>
+          </svg>
+        </div>
+        <div class="sym-name">Ground (GND)</div>
+        <div class="sym-unit">0V Reference</div>
+        <div class="sym-desc">The return path. Every circuit needs one.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 4 — RESISTORS
+══════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">COMPONENT 1</span></div>
+      <h2 class="au"><em>Resistors</em></h2>
+      <p class="def au">A resistor is the most common component in electronics. It opposes the flow of current, converting electrical energy into heat. You already used one in Day 2. Now you know its symbol and how to read it.</p>
+      <div class="types-label au">TYPES YOU WILL ENCOUNTER</div>
+      <div class="type-card au">
+        <div class="tc-icon">&#x1F4CF;</div>
+        <div>
+          <div class="tc-name">Fixed Resistor</div>
+          <div class="tc-desc">The small striped cylinder on your bench. One specific resistance value. Colour bands tell you the value. Used in 90% of basic circuits.</div>
+        </div>
+      </div>
+      <div class="type-card au">
+        <div class="tc-icon">&#x1F39B;</div>
+        <div>
+          <div class="tc-name">Variable Resistor (Potentiometer)</div>
+          <div class="tc-desc">A rotating knob that changes resistance. Used in volume controls, dimmer switches, and sensor calibration. You will see one in the lab.</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Resistor physical SVG -->
+      <svg viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <line x1="20" y1="90" x2="60" y2="90" stroke="#C8D4E0" stroke-width="3" stroke-linecap="round"/>
+        <rect x="60" y="62" width="200" height="56" rx="16" fill="rgba(200,160,80,0.2)" stroke="rgba(200,160,80,0.5)" stroke-width="2"/>
+        <!-- Bands -->
+        <rect x="84"  y="62" width="22" height="56" rx="4" fill="#FFD700" opacity=".9"/>
+        <rect x="116" y="62" width="22" height="56" rx="4" fill="#9400D3" opacity=".9"/>
+        <rect x="148" y="62" width="22" height="56" rx="4" fill="#8B4513" opacity=".9"/>
+        <rect x="210" y="62" width="22" height="56" rx="4" fill="#C0C0C0" opacity=".9"/>
+        <line x1="260" y1="90" x2="300" y2="90" stroke="#C8D4E0" stroke-width="3" stroke-linecap="round"/>
+        <!-- Labels -->
+        <text x="95"  y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.35)">4</text>
+        <text x="127" y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.35)">7</text>
+        <text x="159" y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.35)">&times;10</text>
+        <text x="221" y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.35)">&plusmn;10%</text>
+        <text x="160" y="162" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="rgba(245,166,35,.6)" letter-spacing="1">470&Omega; &mdash; YELLOW VIOLET BROWN SILVER</text>
+      </svg>
+      <div class="read-box au">
+        <div class="rb-label">HOW TO READ IT NOW</div>
+        <div class="rb-text">Pick up any resistor from your tray. Find the gold or silver band &mdash; that is the tolerance band (always on the right). Read the remaining bands left to right. Use the colour code card on your bench.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 5 — CAPACITORS
+══════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-org">COMPONENT 2</span></div>
+      <h2 class="au"><em>Capacitors</em></h2>
+      <p class="def au">A capacitor stores electrical energy in an electric field between two conductive plates. Unlike a battery, it charges and discharges almost instantly. Think of it as a tiny rechargeable bucket for charge.</p>
+      <div class="cap-types au">
+        <div class="cap-card elec">
+          <svg viewBox="0 0 60 80" fill="none" width="48">
+            <rect x="10" y="15" width="40" height="50" rx="6" fill="rgba(212,85,0,0.2)" stroke="rgba(212,85,0,0.5)" stroke-width="1.5"/>
+            <line x1="30" y1="5" x2="30" y2="15" stroke="#FB923C" stroke-width="2"/>
+            <line x1="30" y1="65" x2="30" y2="75" stroke="#6B7E96" stroke-width="2"/>
+            <text x="30" y="44" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#FB923C">+</text>
+            <line x1="16" y1="30" x2="44" y2="30" stroke="#FB923C" stroke-width="1.5" opacity=".5"/>
+          </svg>
+          <div class="cap-name">Electrolytic</div>
+          <div class="cap-desc">Cylindrical, polarised. Has + and &minus; legs. Larger values (1&micro;F&ndash;10000&micro;F).</div>
+          <span class="cap-badge">POLARITY MATTERS</span>
+        </div>
+        <div class="cap-card cer">
+          <svg viewBox="0 0 60 80" fill="none" width="48">
+            <ellipse cx="30" cy="40" rx="20" ry="24" fill="rgba(8,145,178,0.15)" stroke="rgba(8,145,178,0.4)" stroke-width="1.5"/>
+            <line x1="30" y1="16" x2="30" y2="5" stroke="#22D3EE" stroke-width="2"/>
+            <line x1="30" y1="64" x2="30" y2="75" stroke="#22D3EE" stroke-width="2"/>
+            <text x="30" y="43" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#22D3EE">104</text>
+          </svg>
+          <div class="cap-name">Ceramic Disc</div>
+          <div class="cap-desc">Small disc, no polarity. Values in picofarads to nanofarads. For filtering noise.</div>
+          <span class="cap-badge">NO POLARITY</span>
+        </div>
+      </div>
+      <div class="warning-box au">
+        <div class="wb-label">SAFETY — ELECTROLYTIC CAPACITORS</div>
+        <div class="wb-text">Connect an electrolytic capacitor backwards and it can bulge, leak, or in extreme cases rupture. Always check the + leg (longer leg or white stripe) before connecting. This is exactly like the LED polarity rule from Day 2.</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="charge-box au">
+        <div class="cb-label">WHAT CAPACITORS DO IN CIRCUITS</div>
+        <div class="cb-text">They smooth out voltage fluctuations — like a buffer tank in a water system. When the supply dips, the capacitor releases its stored charge to keep things running smoothly. This is called decoupling or filtering.</div>
+      </div>
+      <!-- Charge/discharge SVG -->
+      <svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" class="au">
+        <text x="150" y="18" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="rgba(212,85,0,0.6)" letter-spacing="1">CHARGE / DISCHARGE CURVE</text>
+        <line x1="30" y1="140" x2="270" y2="140" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+        <line x1="30" y1="30" x2="30" y2="145" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+        <!-- Charge curve -->
+        <path d="M30,135 Q60,135 90,80 Q120,40 150,32 Q180,28 210,27 Q240,26 270,26" stroke="#FB923C" stroke-width="2" fill="none"/>
+        <!-- Discharge curve -->
+        <path d="M30,27 Q60,27 90,42 Q120,72 150,102 Q180,122 210,132 Q240,137 270,139" stroke="rgba(212,85,0,0.4)" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+        <text x="155" y="38"  font-family="DM Mono,monospace" font-size="9" fill="#FB923C">CHARGING</text>
+        <text x="150" y="118" font-family="DM Mono,monospace" font-size="9" fill="rgba(212,85,0,0.5)">DISCHARGING</text>
+        <text x="26" y="160" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.2)">0</text>
+        <text x="256" y="160" font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.2)">TIME &rarr;</text>
+        <text x="14" y="33"  font-family="DM Mono,monospace" font-size="9" fill="rgba(255,255,255,.2)" writing-mode="tb">VOLTAGE</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 6 — LEDs & DIODES
+══════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">COMPONENT 3</span></div>
+      <h2 class="au"><em>LEDs</em><br>&amp; Diodes</h2>
+      <p class="def au">An LED (Light Emitting Diode) is a diode that produces light when current flows through it in the correct direction. A plain diode does the same job but produces heat instead. Both allow current in only ONE direction — like a one-way valve.</p>
+      <div class="polarity-box au">
+        <div class="pb-label">IDENTIFYING THE TWO LEGS</div>
+        <div class="pol-row">
+          <div class="pol-sym" style="color:#52C98A;">+</div>
+          <div>
+            <div class="pol-text">Anode &mdash; the positive leg</div>
+            <div class="pol-sub">Longer leg &bull; Flat side absent &bull; Connect to higher voltage</div>
+          </div>
+        </div>
+        <div class="pol-row" style="margin-top:8px;">
+          <div class="pol-sym" style="color:#FF8A83;">&minus;</div>
+          <div>
+            <div class="pol-text">Cathode &mdash; the negative leg</div>
+            <div class="pol-sub">Shorter leg &bull; Flat side on LED body &bull; Connect to GND</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="au"><span class="tag tag-org">LED COLOURS &amp; FORWARD VOLTAGES</span></div>
+      <div style="margin-top:10px;"></div>
+      <div class="led-colors au">
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#FF2020;box-shadow:0 0 8px rgba(255,32,32,.5);"></div>
+          <div class="led-name">Red</div>
+          <div class="led-vf">1.8&ndash;2.2V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#FFA500;box-shadow:0 0 8px rgba(255,165,0,.5);"></div>
+          <div class="led-name">Amber</div>
+          <div class="led-vf">2.0&ndash;2.2V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#FFFF00;box-shadow:0 0 8px rgba(255,255,0,.4);"></div>
+          <div class="led-name">Yellow</div>
+          <div class="led-vf">2.0&ndash;2.2V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#00CC44;box-shadow:0 0 8px rgba(0,204,68,.5);"></div>
+          <div class="led-name">Green</div>
+          <div class="led-vf">2.0&ndash;3.5V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#4488FF;box-shadow:0 0 8px rgba(68,136,255,.5);"></div>
+          <div class="led-name">Blue</div>
+          <div class="led-vf">3.0&ndash;3.5V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#FFFFFF;box-shadow:0 0 8px rgba(255,255,255,.4);"></div>
+          <div class="led-name">White</div>
+          <div class="led-vf">3.0&ndash;3.5V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#FF44FF;box-shadow:0 0 8px rgba(255,68,255,.4);"></div>
+          <div class="led-name">Pink</div>
+          <div class="led-vf">3.0&ndash;3.5V</div>
+        </div>
+        <div class="led-chip">
+          <div class="led-dot-sm" style="background:#CC44FF;box-shadow:0 0 8px rgba(204,68,255,.4);"></div>
+          <div class="led-name">UV</div>
+          <div class="led-vf">3.1&ndash;3.8V</div>
+        </div>
+      </div>
+      <div class="diode-box au" style="margin-top:12px;">
+        <div class="db-label">PLAIN DIODE (1N4007)</div>
+        <div class="db-text">Same idea as an LED but produces no light. Used to protect circuits from reverse voltage spikes — common near motors and relays. The silver band marks the cathode (&minus;) end.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 7 — SWITCHES RELAYS TRANSISTORS
+══════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-blue">COMPONENTS 4, 5 &amp; 6</span></div>
+    <h2 class="au">Controlling the Flow</h2>
+    <p class="sub au">These three components all do one thing — they control whether current flows or not. The difference is how they do it.</p>
+    <div class="comp-grid">
+      <div class="comp-card au">
+        <div class="cc-icon">&#x1F4A1;</div>
+        <div class="cc-name">Switch</div>
+        <div class="cc-type">MECHANICAL CONTROL</div>
+        <div class="cc-desc">A physical lever or button that makes or breaks a circuit connection. You press it, the circuit opens or closes. Simple, reliable, used everywhere from doorbells to industrial panels.</div>
+        <div class="cc-fact">Types on your bench: push-button (momentary) and toggle (latching). Try both &mdash; feel the difference in your hand.</div>
+      </div>
+      <div class="comp-card au">
+        <div class="cc-icon">&#x1F4E1;</div>
+        <div class="cc-name">Relay</div>
+        <div class="cc-type">ELECTRICALLY CONTROLLED SWITCH</div>
+        <div class="cc-desc">A small electromagnet that physically moves a switch contact. A small control current (e.g. 5V from an Arduino) can switch a large load (e.g. 230V motor) without direct electrical connection. Isolation is the key feature.</div>
+        <div class="cc-fact">You can hear a relay click when it operates. Listen for it when the lab relay module is triggered during the Day 9 scenario stations.</div>
+      </div>
+      <div class="comp-card au">
+        <div class="cc-icon">&#x26A1;</div>
+        <div class="cc-name">Transistor</div>
+        <div class="cc-type">ELECTRONIC AMPLIFIER / SWITCH</div>
+        <div class="cc-desc">Three legs: Base, Collector, Emitter. A tiny current at the Base controls a much larger current between Collector and Emitter. Used as a switch in digital circuits or as an amplifier in audio. The building block of every microchip.</div>
+        <div class="cc-fact">Your smartphone contains approximately 15 billion transistors. The BC547 on your bench is one single transistor you can hold between two fingers.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 8 — READING A FULL CIRCUIT
+══════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-org">READING A SCHEMATIC</span></div>
+      <h2 class="au">The Day 2<br>Circuit &mdash;<br>Now in Code</h2>
+      <p class="intro au">You built this circuit yesterday with your hands. Now read it as a schematic. Hover each row to highlight that component on the diagram.</p>
+      <div class="legend">
+        <div class="leg-row au" data-comp="bat" onmouseenter="hiComp('bat')" onmouseleave="clearHi()">
+          <div class="leg-dot" style="background:#EAB308;"></div>
+          <div class="leg-name">Battery</div>
+          <div class="leg-val">9V DC</div>
+        </div>
+        <div class="leg-row au" data-comp="res" onmouseenter="hiComp('res')" onmouseleave="clearHi()">
+          <div class="leg-dot" style="background:#FB923C;"></div>
+          <div class="leg-name">Resistor</div>
+          <div class="leg-val">470&Omega;</div>
+        </div>
+        <div class="leg-row au" data-comp="led" onmouseenter="hiComp('led')" onmouseleave="clearHi()">
+          <div class="leg-dot" style="background:#FFCC00;"></div>
+          <div class="leg-name">LED</div>
+          <div class="leg-val">Red, V<sub>f</sub>&asymp;2V</div>
+        </div>
+        <div class="leg-row au" data-comp="gnd" onmouseenter="hiComp('gnd')" onmouseleave="clearHi()">
+          <div class="leg-dot" style="background:#6B7E96;"></div>
+          <div class="leg-name">Ground / Return</div>
+          <div class="leg-val">0V</div>
+        </div>
+        <div class="leg-row au" data-comp="wire" onmouseenter="hiComp('wire')" onmouseleave="clearHi()">
+          <div class="leg-dot" style="background:#22D3EE;"></div>
+          <div class="leg-name">Connecting Wires</div>
+          <div class="leg-val">Conductors</div>
+        </div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="schematic-wrap" id="schematicWrap">
+        <svg id="schemSvg" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+          <!-- Wires -->
+          <g id="sc-wire">
+            <line x1="80" y1="60" x2="180" y2="60" stroke="#22D3EE" stroke-width="2"/>
+            <line x1="280" y1="60" x2="320" y2="60" stroke="#22D3EE" stroke-width="2"/>
+            <line x1="320" y1="60" x2="320" y2="260" stroke="#22D3EE" stroke-width="2"/>
+          </g>
+          <!-- Ground return -->
+          <g id="sc-gnd">
+            <line x1="80" y1="260" x2="320" y2="260" stroke="#6B7E96" stroke-width="1.5" stroke-dasharray="5,3"/>
+            <!-- GND symbol -->
+            <line x1="80" y1="260" x2="80" y2="280" stroke="#6B7E96" stroke-width="1.5"/>
+            <line x1="62" y1="280" x2="98"  y2="280" stroke="#6B7E96" stroke-width="2"/>
+            <line x1="68" y1="288" x2="92"  y2="288" stroke="#6B7E96" stroke-width="1.5"/>
+            <line x1="74" y1="296" x2="86"  y2="296" stroke="#6B7E96" stroke-width="1"/>
+          </g>
+          <!-- Battery -->
+          <g id="sc-bat">
+            <rect x="36" y="80" width="44" height="160" rx="8" fill="rgba(234,179,8,0.1)" stroke="rgba(234,179,8,0.5)" stroke-width="1.5"/>
+            <line x1="58" y1="60" x2="58"  y2="80" stroke="#EAB308" stroke-width="2"/>
+            <line x1="58" y1="240" x2="58" y2="260" stroke="#6B7E96" stroke-width="2"/>
+            <line x1="36" y1="60"  x2="80"  y2="60" stroke="#EAB308" stroke-width="2"/>
+            <line x1="36" y1="260" x2="80" y2="260" stroke="#6B7E96" stroke-width="1.5"/>
+            <text x="58" y="162" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="20" font-weight="700" fill="#EAB308">9V</text>
+            <text x="58" y="178" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(234,179,8,0.5)">BATTERY</text>
+            <text x="64" y="74" font-family="DM Mono,monospace" font-size="11" fill="#EAB308">+</text>
+            <text x="64" y="258" font-family="DM Mono,monospace" font-size="11" fill="#6B7E96">&minus;</text>
+          </g>
+          <!-- Resistor -->
+          <g id="sc-res">
+            <rect x="180" y="44" width="100" height="32" rx="6" fill="rgba(245,166,35,0.12)" stroke="rgba(245,166,35,0.5)" stroke-width="1.5"/>
+            <text x="230" y="64" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#F5A623">470&Omega;</text>
+          </g>
+          <!-- LED -->
+          <g id="sc-led">
+            <polygon points="300,100 300,160 340,130" fill="rgba(255,200,0,0.15)" stroke="#FFCC00" stroke-width="1.5"/>
+            <line x1="340" y1="100" x2="340" y2="160" stroke="#FFCC00" stroke-width="2"/>
+            <line x1="320" y1="60" x2="320" y2="100" stroke="#22D3EE" stroke-width="2"/>
+            <line x1="300" y1="160" x2="300" y2="220" stroke="#22D3EE" stroke-width="2"/>
+            <line x1="300" y1="220" x2="320" y2="260" stroke="#22D3EE" stroke-width="2"/>
+            <!-- Light rays -->
+            <line x1="348" y1="112" x2="362" y2="98"  stroke="#FFCC00" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+            <line x1="354" y1="126" x2="370" y2="116" stroke="#FFCC00" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+            <text x="365" y="102" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,200,0,0.6)">LED</text>
+          </g>
+          <!-- Labels -->
+          <text x="230" y="40" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(245,166,35,0.4)">R1</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 9 — SORTING CHALLENGE
+══════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-org">HANDS-ON CHALLENGE</span></div>
+      <h2 class="au">Component<br><span>Sorting</span><br>Challenge</h2>
+      <p class="task-intro au">The slides are going away. On your bench is a bag of 20&ndash;25 mixed components. You have 15 minutes to identify each one and sort them into the correct labelled tray section.</p>
+      <div class="task-steps">
+        <div class="t-step au"><div class="tn">1</div><div class="tt">Empty the component bag onto your bench. Do <span>not</span> sort yet &mdash; just spread them out and observe.</div></div>
+        <div class="t-step au"><div class="tn">2</div><div class="tt">Pick up each component. Use the <span>reference sheet</span> on your bench to identify it by name.</div></div>
+        <div class="t-step au"><div class="tn">3</div><div class="tt">Place it in the correct <span>labelled tray</span> section. If you are unsure, set it aside &mdash; do not guess.</div></div>
+        <div class="t-step au"><div class="tn">4</div><div class="tt">When time is called, count your correct identifications. The instructor will check and debrief.</div></div>
+      </div>
+    </div>
+    <div class="right au">
+      <div class="timer-panel">
+        <div class="t-label">TIME ALLOWED</div>
+        <div class="t-num" id="timerNum">15:00</div>
+        <div class="t-sub">Minutes &mdash; starts when instructor says go</div>
+        <button class="t-btn" id="timerBtn" onclick="startTimer()">Start Timer</button>
+      </div>
+      <div class="component-list au" style="margin-top:14px;">
+        <div class="cl-item">Resistors (various)</div>
+        <div class="cl-item">Electrolytic caps</div>
+        <div class="cl-item">Ceramic caps</div>
+        <div class="cl-item">LEDs (mixed)</div>
+        <div class="cl-item">Diodes 1N4007</div>
+        <div class="cl-item">Push switches</div>
+        <div class="cl-item">Toggle switches</div>
+        <div class="cl-item">Transistors BC547</div>
+        <div class="cl-item">Relay module</div>
+        <div class="cl-item">Jumper wires</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 10 — DEBRIEF
+══════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-org">DEBRIEF</span></div>
+    <h2 class="au">Common Mistakes &mdash; and How to Avoid Them</h2>
+    <p class="sub au">These are the most frequent misidentifications in every batch. Go through each one together.</p>
+    <div class="mistake-grid">
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F4CF;</div>
+        <div class="mk-title">Resistor vs Diode</div>
+        <div class="mk-wrong">Wrong: Confusing a small diode (1N4007) with a resistor because both are small cylindrical components.</div>
+        <div class="mk-right">Right: Diodes have a silver or grey band on ONE end only &mdash; the cathode. Resistors have multiple colour bands and no stripe. Look at the band count.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F522;</div>
+        <div class="mk-title">Electrolytic Capacitor Polarity</div>
+        <div class="mk-wrong">Wrong: Assuming both legs are interchangeable because "it looks symmetric".</div>
+        <div class="mk-right">Right: The longer leg is always + (anode). The white stripe on the body marks the &minus; side. Never connect backwards in circuit.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F4A1;</div>
+        <div class="mk-title">LED Anode vs Cathode</div>
+        <div class="mk-wrong">Wrong: Inserting the LED backwards, then concluding the circuit is broken when it does not light up.</div>
+        <div class="mk-right">Right: Longer leg = anode (+). If the legs are trimmed equally, look inside the LED &mdash; the larger metal plate is the cathode (&minus;).</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x26A1;</div>
+        <div class="mk-title">Transistor Leg Order</div>
+        <div class="mk-wrong">Wrong: Assuming the leg order of a BC547 is B-C-E from left to right without checking the datasheet.</div>
+        <div class="mk-right">Right: Face the flat side of the BC547 towards you. Left to right: Collector, Base, Emitter. Always verify on the component reference card.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F4CC;</div>
+        <div class="mk-title">Ceramic Capacitor Values</div>
+        <div class="mk-wrong">Wrong: Reading &ldquo;104&rdquo; on a ceramic cap and thinking it means 104 picofarads.</div>
+        <div class="mk-right">Right: The code 104 means 10 &times; 10<sup>4</sup> = 100,000 pF = 100 nF = 0.1&micro;F. Use the reference table. Do not guess.</div>
+      </div>
+      <div class="mk-card au">
+        <div class="mk-icon">&#x1F9F2;</div>
+        <div class="mk-title">Relay vs Transformer</div>
+        <div class="mk-wrong">Wrong: Treating a 5V relay module as an unknown black box and setting it aside rather than identifying it.</div>
+        <div class="mk-right">Right: The relay module has a visible coil housing and typically a 5V, GND, and signal pin header. The clicking sound when activated is unmistakeable.</div>
+      </div>
+    </div>
+    <div class="score-box au">
+      <span style="font-size:20px;">&#x1F3AF;</span>
+      <span>Score 18&ndash;20 correct: Excellent &bull; 14&ndash;17: Good &mdash; review missed ones now &bull; Below 14: Spend 5 minutes revisiting the reference sheet before Day 4</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SLIDE 11 — CLOSING
+══════════════════════════════ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 3 COMPLETE &nbsp;&middot;&nbsp; 7 SESSIONS TO GO</div>
+    <h2 class="au">You can now read<br>the <em>language</em><br>of electronics.</h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Read a basic circuit schematic and trace the current path</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Identify resistors, capacitors, LEDs, diodes, switches, transistors by sight</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Explain the polarity rule for electrolytic capacitors and LEDs</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Correctly read the 6 core schematic symbols</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 4:</strong> Plug tops &amp; sockets. You will disassemble a 3-pin plug top, identify Live, Neutral and Earth, and safely reassemble it. Bring your covered shoes and your curiosity.
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL = 11;
+let cur = 0, notesOpen = false;
+
+const NOTES = [
+  `<strong>Recall exercise first — before touching any slide.</strong> Write on the whiteboard: "V = 9V, R = 470Ω, I = ?" Give participants 60 seconds to calculate on paper. Answer: I = 9 ÷ 470 = 0.019A = 19mA. This retrieval practice from Day 2 takes 3 minutes and significantly improves long-term retention. <em>Then introduce Day 3 with energy: "Yesterday you built a circuit with your hands. Today you are going to learn to read one on paper — and by the end, you will be able to pick up any component from your bench and tell me exactly what it is."</em>`,
+
+  `<strong>The map vs photograph analogy is the frame for the whole session.</strong> If possible, show both a photograph of the Day 2 breadboard circuit and its schematic side by side — the contrast makes the point instantly. Ask: "Which one would you rather use to build from?" The schematic wins because it removes all the physical noise and shows only what matters electrically. <em>Key phrase: "A schematic is a conversation between one engineer and every other engineer in the world. It is the same language in a lab in Hubballi and a lab in Munich."</em>`,
+
+  `<strong>Do not lecture through this slide — make it physical.</strong> As you name each symbol, hold up the physical component from the bench and say: "This is what this symbol represents in the real world." Resistor symbol → hold up a 470Ω resistor. LED symbol → hold up a red LED. Ground symbol → point to the black wire on the bench. The mapping between symbol and object is the only thing participants need to leave this slide with. <em>Ask: "Which symbol looks most like its physical component?" Participants usually say the battery — multiple cells stacked. That is a good memory anchor.</em>`,
+
+  `<strong>Turn the resistor reading into a challenge.</strong> After explaining the colour code recap, give each participant three random resistors. Say: "You have 90 seconds. Write the value of each one using the colour code card." Then reveal the answers together. This is a low-stakes retrieval task that cements the learning from Day 2. <em>Common error to pre-empt: participants reading bands right to left instead of left to right. Remind them: the tolerance band (gold or silver) is always on the right. Start reading from the left.</em>`,
+
+  `<strong>The capacitor charge/discharge concept is best explained with a physical demonstration.</strong> If you have a large electrolytic capacitor (1000µF or more) and a DC power supply, charge it briefly then connect it to a small LED — it will flash and go out as the cap discharges. This 30-second demo is unforgettable. If you cannot do this, the SVG curve on the slide serves as the visual proxy. <em>Safety emphasis for electrolytic caps: hold up one with the stripe clearly visible. Say: "This white stripe is the negative leg. If this goes in backwards in a real circuit with significant voltage, this component can fail loudly. The stripe matters."</em>`,
+
+  `<strong>The forward voltage table is practically important.</strong> Participants need to understand why the resistor calculation changes for different LED colours. A blue LED (Vf = 3.2V) needs a different resistor than a red LED (Vf = 2.0V) for the same circuit. Ohm's Law applied: R = (Vsupply − Vf) / I. With 9V supply, red LED: R = (9−2) / 0.02 = 350Ω → use 470Ω. Blue LED: R = (9−3.2) / 0.02 = 290Ω → use 330Ω. <em>You do not need to go deep into this calculation today — plant the seed that Vf matters, and it will come back in Day 5 when they use the multimeter to measure actual forward voltage.</em>`,
+
+  `<strong>The transistor fact about smartphones is the most effective awe moment in the session.</strong> Say it slowly: "Your phone contains approximately 15 billion transistors. You are holding one transistor between your fingers right now." Then say: "The only difference between this BC547 and the ones in your phone is size — they are about 5 nanometres across in a modern chip. This one is about 5 millimetres." <em>The relay click demonstration is also high-impact: if you have the relay module connected and can trigger it from a 5V source, click it several times. The mechanical sound of a 5V signal switching a physical contact surprises people every time.</em>`,
+
+  `<strong>The interactive legend on this slide is the teaching moment.</strong> Have participants hover each row themselves if they are using this on a display with a mouse, or walk through each component yourself by pointing at the schematic. The key question to ask: "Trace the current path from the + terminal of the battery all the way back to the − terminal. What does it go through?" Answer: + terminal → wire → resistor → wire → LED → wire → − terminal. <em>This tracing exercise is exactly what participants will need to do when diagnosing faults in Day 8 and Day 9. You are building a habit now.</em>`,
+
+  `<strong>Remove the presentation from the screen when the timer starts.</strong> Go to a blank screen or switch off the projector. The challenge should feel independent. Circulate silently — observe what participants pick up first, what confuses them, what they set aside. Do not help unless someone is about to make a safety error. <em>The goal is not perfection — it is a diagnostic. Which components are hardest to identify? That tells you where to spend extra time in the debrief on Slide 10. Typical hard ones: diode vs resistor, ceramic cap value, transistor leg order.</em>`,
+
+  `<strong>Run the debrief as a group activity — not a lecture.</strong> For each mistake card, ask: "Did anyone make this one?" The willingness to admit mistakes in a room of strangers is high when the instructor normalises it first. Share one error you made yourself when you were learning. <em>The scoring guidance at the bottom is a rough benchmark — do not embarrass anyone with a low score. Frame it as: "If you missed a few, that is exactly why we do the challenge now and not on Day 10."</em>`,
+
+  `<strong>The Day 4 preview about plug tops should create genuine anticipation.</strong> Hold up a plug top and say: "Tomorrow you will take one of these apart. You will see what is inside, understand why the wires are the colours they are, and put it back together safely. It is the first time in the programme that you will be working with something connected directly to the mains supply standard — even though we will never plug in live during the session." <em>That last line — "we will never plug in live" — is important to say proactively. Some participants may feel apprehensive about plug tops. Addressing it now removes the fear before Day 4 begins.</em>`
+];
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  const prev = cur;
+  setTimeout(() => slides[prev].classList.remove('out'), 600);
+  cur = n;
+  slides[cur].classList.add('active');
+  updateUI();
+}
+function go(dir) { const n = cur+dir; if(n>=0 && n<TOTAL) goTo(n); }
+function updateUI() {
+  document.getElementById('slideNum').textContent = (cur+1)+' / '+TOTAL;
+  document.getElementById('topCount').textContent = String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('prevBtn').disabled = cur===0;
+  document.getElementById('nextBtn').disabled = cur===TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  document.getElementById('notesBody').innerHTML = NOTES[cur];
+}
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open',notesOpen);
+  document.getElementById('notesBtn').textContent = notesOpen ? 'SPEAKER NOTES ↓' : 'SPEAKER NOTES ↑';
+}
+
+// Schematic highlight
+function hiComp(id) {
+  clearHi();
+  const el = document.getElementById('sc-'+id);
+  if(el) {
+    el.querySelectorAll('line,rect,polygon,path').forEach(e=>{
+      if(e.getAttribute('stroke') && e.getAttribute('stroke')!=='none') e.setAttribute('data-orig-stroke', e.getAttribute('stroke'));
+      if(e.getAttribute('fill') && e.getAttribute('fill')!=='none') e.setAttribute('data-orig-fill', e.getAttribute('fill'));
+      e.style.stroke = '#FB923C';
+      e.style.strokeWidth = '2.5';
+    });
+    document.querySelectorAll('#s8 .leg-row').forEach(r=>r.classList.remove('hi'));
+    const row = document.querySelector('[data-comp="'+id+'"]');
+    if(row) row.classList.add('hi');
+  }
+}
+function clearHi() {
+  ['bat','res','led','gnd','wire'].forEach(id=>{
+    const el = document.getElementById('sc-'+id);
+    if(el) el.querySelectorAll('line,rect,polygon,path').forEach(e=>{e.style.stroke='';e.style.strokeWidth='';});
+  });
+  document.querySelectorAll('#s8 .leg-row').forEach(r=>r.classList.remove('hi'));
+}
+
+// Timer
+let timerInterval = null, timerSecs = 900;
+function startTimer() {
+  if(timerInterval) { clearInterval(timerInterval); timerInterval=null; timerSecs=900; document.getElementById('timerNum').textContent='15:00'; document.getElementById('timerBtn').textContent='Start Timer'; document.getElementById('timerNum').style.color='var(--lorange)'; return; }
+  document.getElementById('timerBtn').textContent = 'Reset';
+  timerInterval = setInterval(()=>{
+    timerSecs--;
+    const m = Math.floor(timerSecs/60), s = timerSecs%60;
+    document.getElementById('timerNum').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    if(timerSecs<=60) document.getElementById('timerNum').style.color='#FF8A83';
+    if(timerSecs<=0) { clearInterval(timerInterval); timerInterval=null; document.getElementById('timerNum').textContent='TIME UP'; document.getElementById('timerBtn').textContent='Reset'; }
+  },1000);
+}
+
+// Keyboard
+document.addEventListener('keydown', e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}
+});
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.sym-card,.comp-card,.mk-card,.type-card,.leg-row,.rule-item,.cmp-row,.cap-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
