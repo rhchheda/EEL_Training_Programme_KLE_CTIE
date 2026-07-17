@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EE Lab Training Programme | KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #08111F;
+  --navy2: #0D1C30;
+  --blue: #1054A8;
+  --lblue: #2779D4;
+  --gold: #F5A623;
+  --lgold: #FFD166;
+  --white: #FFFFFF;
+  --offwht: #F4F6FA;
+  --grey: #6B7E96;
+  --lgrey: #C8D4E0;
+  --green: #0A7040;
+  --red: #C8352B;
+  --teal: #22D3EE;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--white);
+  background:
+    radial-gradient(circle at 20% 12%, rgba(39,121,212,.18), transparent 32rem),
+    radial-gradient(circle at 86% 8%, rgba(245,166,35,.16), transparent 28rem),
+    linear-gradient(135deg, #04090F 0%, var(--navy) 44%, #0A0800 100%);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent 78%);
+}
+
+.shell {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--navy);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, var(--gold), var(--lgold));
+  box-shadow: 0 0 28px rgba(245,166,35,.28);
+}
+
+.brand-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.brand-sub {
+  margin-top: 2px;
+  color: var(--grey);
+  font-size: 12px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ghost-btn, .solid-btn, .card-btn {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  color: var(--white);
+  background: rgba(255,255,255,.04);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
+}
+
+.ghost-btn, .solid-btn {
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 12px;
+}
+
+.solid-btn {
+  border-color: rgba(245,166,35,.42);
+  background: linear-gradient(135deg, var(--gold), #D78A16);
+  color: #101620;
+  box-shadow: 0 12px 34px rgba(245,166,35,.18);
+}
+
+.ghost-btn:hover, .solid-btn:hover, .card-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245,166,35,.5);
+}
+
+.hero {
+  min-height: 380px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 42px;
+  align-items: center;
+  padding: 62px 0 42px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 34px;
+  height: 1px;
+  background: var(--gold);
+}
+
+h1 {
+  margin-top: 22px;
+  max-width: 790px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: .95;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+h1 em {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.lead {
+  margin-top: 20px;
+  max-width: 660px;
+  color: #8AAED4;
+  font-size: 16px;
+  line-height: 1.75;
+  font-weight: 300;
+}
+
+.hero-panel {
+  position: relative;
+  min-height: 300px;
+  padding: 24px;
+  border-left: 1px solid rgba(245,166,35,.36);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+  overflow: hidden;
+}
+
+.hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: auto -90px -110px auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,166,35,.24), transparent 62%);
+  filter: blur(10px);
+}
+
+.metric {
+  position: relative;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.metric:last-child { border-bottom: 0; }
+.metric-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 54px;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.metric-label {
+  margin-top: 4px;
+  color: var(--lgrey);
+  font-size: 13px;
+}
+
+.section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 18px 0 18px;
+}
+
+h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1;
+}
+
+.section-note {
+  max-width: 440px;
+  color: var(--grey);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  padding-bottom: 54px;
+}
+
+.day-card {
+  position: relative;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 8px;
+  background: rgba(8,17,31,.76);
+  box-shadow: 0 18px 50px rgba(0,0,0,.24);
+  overflow: hidden;
+  transform: translateY(18px);
+  opacity: 0;
+  animation: fadeUp .65s ease forwards;
+}
+
+.day-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(130deg, rgba(245,166,35,.14), transparent 34%),
+    radial-gradient(circle at 90% 12%, var(--accent), transparent 64%);
+  opacity: .82;
+  pointer-events: none;
+}
+
+.day-card:hover {
+  border-color: rgba(245,166,35,.34);
+  transform: translateY(-4px);
+}
+
+.day-card > * { position: relative; z-index: 1; }
+.day-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.day-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 54px;
+  color: rgba(255,255,255,.14);
+  line-height: .8;
+}
+
+.day-title {
+  margin-top: 28px;
+  color: var(--white);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  line-height: 1.02;
+}
+
+.day-desc {
+  margin-top: 12px;
+  min-height: 62px;
+  color: #8AAED4;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.card-btn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.card-btn.primary {
+  background: rgba(245,166,35,.12);
+  border-color: rgba(245,166,35,.35);
+  color: var(--lgold);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  background: rgba(4,9,15,.88);
+  backdrop-filter: blur(18px);
+  padding: 20px;
+}
+
+.modal.open {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.modal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-title {
+  color: var(--lgrey);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  background: #04090F;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1060px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-panel { min-height: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .metric { border-bottom: 0; border-right: 1px solid rgba(255,255,255,.08); padding: 8px 14px; }
+  .metric:last-child { border-right: 0; }
+  .day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .shell { width: min(100% - 28px, 1180px); }
+  .topbar { height: auto; padding: 16px 0; align-items: flex-start; flex-direction: column; }
+  .top-actions { width: 100%; }
+  .ghost-btn, .solid-btn { flex: 1; text-align: center; }
+  .hero { padding: 42px 0 28px; gap: 26px; }
+  .hero-panel { grid-template-columns: 1fr; }
+  .metric { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .section-head { align-items: flex-start; flex-direction: column; }
+  .day-grid { grid-template-columns: 1fr; }
+  .modal { padding: 10px; }
+  .modal-bar { align-items: flex-start; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="EE Lab training home">
+      <span class="mark">EE</span>
+      <span>
+        <span class="brand-title">EE Lab Training</span>
+        <span class="brand-sub">KLE-CTIE practical programme</span>
+      </span>
+    </a>
+    <div class="top-actions">
+      <button class="ghost-btn" type="button" onclick="toggleFullscreen()">Full Screen</button>
+      <a class="solid-btn" href="#presentations">Start Training</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Basic Electrical & Electronics</div>
+      <h1>Ten day practical training, built for <em>doing</em>.</h1>
+      <p class="lead">A professional home screen for the complete EE Lab presentation set. Open any day directly, preview it inside this page, or switch the experience into full screen for classroom delivery.</p>
+    </div>
+    <aside class="hero-panel" aria-label="Programme summary">
+      <div class="metric">
+        <div class="metric-value">10</div>
+        <div class="metric-label">day-wise presentation decks</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">100%</div>
+        <div class="metric-label">hands-on learning flow</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">60%</div>
+        <div class="metric-label">certificate assessment threshold</div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="presentations">
+    <div class="section-head">
+      <h2>Training Decks</h2>
+      <p class="section-note">Choose a day to open the deck. Preview keeps you on the home screen; full page opens the selected presentation directly.</p>
+    </div>
+    <div class="day-grid" id="dayGrid"></div>
+  </section>
+</main>
+
+<div class="modal" id="previewModal" aria-hidden="true">
+  <div class="modal-bar">
+    <div class="modal-title" id="previewTitle">Presentation Preview</div>
+    <div class="modal-actions">
+      <button class="ghost-btn" type="button" onclick="toggleFullscreen()">Full Screen</button>
+      <a class="solid-btn" id="openFullLink" href="#">Open Full Page</a>
+      <button class="ghost-btn" type="button" onclick="closePreview()">Close</button>
+    </div>
+  </div>
+  <iframe class="preview-frame" id="previewFrame" title="Presentation preview" allowfullscreen></iframe>
+</div>
+
+<script>
+const days = [
+  { day: 1, file: 'Day1_Presentation.html', title: 'Welcome to Electrical & Electronics Training', desc: 'Orientation, safety mindset, programme roadmap, PPE and first lab expectations.', accent: 'rgba(245,166,35,.18)' },
+  { day: 2, file: 'Day2_Presentation.html', title: 'Voltage, Current & Resistance', desc: 'Core electrical ideas explained with simple analogies and first circuit thinking.', accent: 'rgba(34,211,238,.18)' },
+  { day: 3, file: 'Day3_Presentation.html', title: 'Circuit Diagrams & Component Identification', desc: 'Reading schematic maps, recognizing symbols and matching them to real parts.', accent: 'rgba(39,121,212,.2)' },
+  { day: 4, file: 'Day4_Presentation.html', title: 'Plug Tops & Sockets', desc: 'Practical wiring awareness, plug internals, socket safety and common failure points.', accent: 'rgba(200,53,43,.16)' },
+  { day: 5, file: 'Day5_Presentation.html', title: 'The Multimeter', desc: 'Using the most important diagnostic tool for voltage, continuity and resistance checks.', accent: 'rgba(10,112,64,.18)' },
+  { day: 6, file: 'Day6_Presentation.html', title: 'Introduction to Soldering', desc: 'Tools, technique, temperature control and forming clean permanent connections.', accent: 'rgba(245,166,35,.2)' },
+  { day: 7, file: 'Day7_Presentation.html', title: 'PCB Assembly', desc: 'Building a full board through careful placement, soldering sequence and inspection.', accent: 'rgba(96,165,250,.18)' },
+  { day: 8, file: 'Day8_Presentation.html', title: 'Desoldering & Rework', desc: 'Removing soldered parts safely, correcting mistakes and restoring board quality.', accent: 'rgba(212,85,0,.18)' },
+  { day: 9, file: 'Day9_Presentation.html', title: 'Scenario Simulations', desc: 'Station-based practice that turns the previous days into realistic troubleshooting.', accent: 'rgba(34,211,238,.16)' },
+  { day: 10, file: 'Day10_Presentation.html', title: 'Assessment & Certificate', desc: 'Final quiz, practical task, scoring expectations and certificate completion flow.', accent: 'rgba(245,166,35,.24)' }
+];
+
+const grid = document.getElementById('dayGrid');
+days.forEach((item, index) => {
+  const card = document.createElement('article');
+  card.className = 'day-card';
+  card.style.setProperty('--accent', item.accent);
+  card.style.animationDelay = `${index * 55}ms`;
+  card.innerHTML = `
+    <div>
+      <div class="day-kicker"><span>Day ${String(item.day).padStart(2, '0')}</span><span class="day-num">${item.day}</span></div>
+      <h3 class="day-title">${item.title}</h3>
+      <p class="day-desc">${item.desc}</p>
+    </div>
+    <div class="card-actions">
+      <button class="card-btn" type="button" data-preview="${item.file}" data-title="Day ${item.day} - ${item.title}">Preview</button>
+      <a class="card-btn primary" href="${item.file}">Full Page</a>
+    </div>
+  `;
+  grid.appendChild(card);
+});
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-preview]');
+  if (!button) return;
+  openPreview(button.dataset.preview, button.dataset.title);
+});
+
+function openPreview(file, title) {
+  document.getElementById('previewTitle').textContent = title;
+  document.getElementById('previewFrame').src = file;
+  document.getElementById('openFullLink').href = file;
+  const modal = document.getElementById('previewModal');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePreview() {
+  const modal = document.getElementById('previewModal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.getElementById('previewFrame').src = 'about:blank';
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closePreview();
+});
+</script>
+</body>
+</html>
