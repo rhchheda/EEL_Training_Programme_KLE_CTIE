@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 7 — PCB Assembly | EE Lab, KLE-CTIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:    #08111F;
+  --navy2:   #0D1C30;
+  --copper:  #B45309;
+  --lcopper: #F59E0B;
+  --xcopper: #FDE68A;
+  --bronze:  #92400E;
+  --pcbgrn:  #1A5C2A;
+  --lpcb:    #22C55E;
+  --white:   #FFFFFF;
+  --grey:    #6B7E96;
+  --lgrey:   #C8D4E0;
+  --red:     #DC2626;
+  --lred:    #FCA5A5;
+  --flame:   #EA580C;
+  --lflame:  #FB923C;
+  --blue:    #1054A8;
+  --lblue:   #60A5FA;
+  --gold:    #F5A623;
+  --lgreen:  #4ADE80;
+  --silver:  #CBD5E1;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:#040C06;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+
+.cursor{width:10px;height:10px;background:var(--lcopper);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference;}
+.cursor.big{width:32px;height:32px;background:rgba(245,158,11,.25);}
+
+.deck{position:relative;width:100vw;height:100vh;}
+.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateY(22px);transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.slide.out{opacity:0;transform:translateY(-22px);}
+
+.nav{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:50px;padding:8px 18px;z-index:1000;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.nav-btn{background:none;border:none;color:var(--grey);cursor:pointer;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-btn:hover{background:rgba(180,83,9,.15);color:var(--lcopper);}
+.nav-btn:disabled{opacity:.25;cursor:default;}
+.nav-dots{display:flex;gap:5px;align-items:center;}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.18);border:none;cursor:pointer;transition:all .2s;padding:0;}
+.dot.active{background:var(--lcopper);width:18px;border-radius:3px;}
+.slide-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);letter-spacing:1px;min-width:42px;text-align:center;}
+.top-count{position:fixed;top:22px;right:28px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.2);z-index:999;letter-spacing:1px;}
+
+.notes-btn{position:fixed;bottom:28px;right:28px;background:rgba(8,17,31,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--grey);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;z-index:1000;transition:all .2s;}
+.notes-btn:hover{color:var(--lcopper);border-color:rgba(180,83,9,.3);}
+.notes-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(4,9,15,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(180,83,9,.25);padding:20px 48px 88px;max-height:40vh;overflow-y:auto;z-index:999;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+.notes-panel.open{transform:translateY(0);}
+.notes-tag{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:3px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.notes-tag::after{content:'';flex:1;height:1px;background:rgba(180,83,9,.2);}
+.notes-body{font-size:13px;color:#8AAED4;line-height:1.8;max-width:900px;}
+.notes-body strong{color:#C8D8E8;}
+.notes-body em{color:var(--lcopper);font-style:normal;}
+
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+.tag-cop{background:rgba(180,83,9,.15);border:1px solid rgba(180,83,9,.35);color:var(--lcopper);}
+.tag-pcb{background:rgba(26,92,42,.15);border:1px solid rgba(34,197,94,.25);color:var(--lpcb);}
+.tag-red{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);color:var(--lred);}
+.tag-gold{background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);color:var(--gold);}
+.tag-blue{background:rgba(16,84,168,.2);border:1px solid rgba(96,165,250,.3);color:var(--lblue);}
+.glow{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .au{animation:fadeUp .5s ease forwards;}
+.slide.active .au:nth-child(1){animation-delay:.05s;}
+.slide.active .au:nth-child(2){animation-delay:.12s;}
+.slide.active .au:nth-child(3){animation-delay:.19s;}
+.slide.active .au:nth-child(4){animation-delay:.26s;}
+.slide.active .au:nth-child(5){animation-delay:.33s;}
+.slide.active .au:nth-child(6){animation-delay:.40s;}
+.au{opacity:0;}
+
+@keyframes ledPulse{0%,100%{box-shadow:0 0 14px 5px rgba(255,200,0,.5),0 0 40px 12px rgba(255,180,0,.2);}50%{box-shadow:0 0 26px 10px rgba(255,220,0,.8),0 0 60px 24px rgba(255,200,0,.35);}}
+@keyframes traceFlow{from{stroke-dashoffset:400;}to{stroke-dashoffset:0;}}
+@keyframes probeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ══ SLIDE 1 — OPENING ══ */
+#s1{background:#040C06;}
+#s1 .ga{width:500px;height:500px;top:-150px;right:-100px;background:radial-gradient(circle,rgba(180,83,9,.2),transparent 65%);}
+#s1 .gb{width:300px;height:300px;bottom:-80px;left:60px;background:radial-gradient(circle,rgba(26,92,42,.15),transparent 65%);}
+#s1 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lcopper),var(--copper),transparent);}
+#s1 .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px 72px;}
+#s1 .day-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--lcopper);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s1 .day-label::before{content:'';display:block;width:32px;height:1px;background:var(--lcopper);}
+#s1 h1{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,76px);font-weight:700;line-height:1.0;color:var(--white);margin-bottom:16px;letter-spacing:-1px;}
+#s1 h1 em{color:var(--lcopper);font-style:italic;}
+#s1 .sub{font-size:16px;color:#7B9AB8;line-height:1.7;max-width:520px;margin-bottom:28px;font-weight:300;}
+#s1 .board-review{padding:14px 18px;background:rgba(26,92,42,.08);border:1px solid rgba(34,197,94,.2);border-left:3px solid var(--lpcb);border-radius:0 6px 6px 0;margin-bottom:16px;max-width:540px;}
+#s1 .br-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lpcb);letter-spacing:2px;margin-bottom:5px;}
+#s1 .br-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .recap-q{padding:14px 18px;background:rgba(180,83,9,.06);border:1px solid rgba(180,83,9,.18);border-left:3px solid var(--copper);border-radius:0 6px 6px 0;max-width:540px;}
+#s1 .rq-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:2px;margin-bottom:5px;}
+#s1 .rq-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+#s1 .inst{position:absolute;bottom:36px;right:56px;z-index:2;text-align:right;}
+#s1 .inst p{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:2px;line-height:1.9;}
+
+/* ══ SLIDE 2 — TODAY'S PCB ══ */
+#s2{background:var(--navy2);}
+#s2 .ga{width:600px;height:400px;top:-80px;right:-120px;background:radial-gradient(ellipse,rgba(180,83,9,.1),transparent 65%);}
+#s2 .layout{display:grid;grid-template-columns:1fr 1fr;height:100%;position:relative;z-index:2;}
+#s2 .left{padding:44px 44px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(255,255,255,.05);}
+#s2 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:12px;}
+#s2 h2 span{color:var(--lcopper);}
+#s2 .intro{font-size:14px;color:#7B9AB8;line-height:1.8;margin-bottom:20px;}
+#s2 .components-list{display:flex;flex-direction:column;gap:8px;}
+#s2 .comp-row{display:flex;gap:12px;padding:10px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:6px;align-items:center;transition:all .2s;}
+#s2 .comp-row:hover{border-color:rgba(245,158,11,.3);background:rgba(180,83,9,.05);}
+#s2 .cr-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;flex-shrink:0;}
+#s2 .cr-name{font-size:13px;font-weight:600;color:var(--white);}
+#s2 .cr-qty{font-family:'DM Mono',monospace;font-size:11px;color:var(--grey);margin-left:auto;}
+#s2 .right{padding:40px 40px;display:flex;align-items:center;justify-content:center;}
+#s2 .circuit-desc{margin-top:16px;padding:12px 16px;background:rgba(180,83,9,.07);border:1px solid rgba(180,83,9,.2);border-radius:8px;}
+#s2 .cd-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:1px;margin-bottom:5px;}
+#s2 .cd-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══ SLIDE 3 — SEQUENCING ══ */
+#s3{background:var(--navy);}
+#s3 .ga{width:500px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(180,83,9,.1),transparent 60%);}
+#s3 .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:52px;align-items:center;}
+#s3 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s3 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+#s3 h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s3 h2 span{color:var(--lcopper);}
+#s3 .why{font-size:14px;color:#C8D8E8;line-height:1.7;margin-bottom:18px;}
+#s3 .seq-steps{display:flex;flex-direction:column;gap:0;}
+#s3 .seq-step{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.05);position:relative;}
+#s3 .seq-step:last-child{border-bottom:none;}
+#s3 .ss-order{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:rgba(180,83,9,.35);line-height:1;min-width:36px;flex-shrink:0;}
+#s3 .ss-name{font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px;}
+#s3 .ss-why{font-size:12px;color:var(--grey);line-height:1.4;}
+#s3 .ss-height{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:1px;margin-top:2px;}
+/* Height comparison SVG */
+#s3 .height-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px;}
+#s3 .hp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:2px;margin-bottom:10px;}
+#s3 .rule-box{padding:12px 14px;background:rgba(180,83,9,.07);border:1px solid rgba(180,83,9,.2);border-radius:8px;}
+#s3 .rb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:1px;margin-bottom:5px;}
+#s3 .rb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+
+/* ══ SHARED STEP SLIDES 4-8 ══ */
+.step-slide{background:var(--navy2);}
+.step-slide .ga{width:500px;height:400px;top:-80px;right:-80px;}
+.step-slide .inner{position:relative;z-index:2;height:100%;display:flex;padding:40px 60px;gap:48px;align-items:center;}
+.step-slide .left{flex:1;}
+.step-slide .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+.step-slide h2{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:var(--white);line-height:1.05;margin-bottom:10px;}
+.step-slide .steps{display:flex;flex-direction:column;gap:10px;}
+.step-slide .step{display:flex;gap:14px;align-items:flex-start;}
+.step-slide .sn{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--white);flex-shrink:0;margin-top:1px;}
+.step-slide .st{font-size:13px;color:var(--white);line-height:1.6;}
+.step-slide .st span{font-weight:600;}
+.comp-detail-box{padding:12px 14px;border-radius:8px;}
+.cdb-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;margin-bottom:6px;}
+.cdb-text{font-size:13px;color:#C8D8E8;line-height:1.6;}
+.warn-strip{padding:10px 13px;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);border-left:3px solid var(--red);border-radius:0 5px 5px 0;}
+.ws-text{font-size:13px;color:#FCA5A5;line-height:1.5;}
+
+/* ══ SLIDE 9 — LIVE TEST ══ */
+#s9{background:radial-gradient(ellipse at 30% 40%,#0D1C0A,#040C06);}
+#s9 .ga{width:700px;height:600px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(245,166,35,.1),transparent 55%);}
+#s9 .inner{position:relative;z-index:2;height:100%;display:flex;padding:44px 60px;gap:52px;align-items:center;}
+#s9 .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+#s9 .right{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;}
+#s9 h2{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--white);line-height:1.1;margin-bottom:10px;}
+#s9 h2 em{color:var(--gold);font-style:italic;}
+#s9 .pre-check{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+#s9 .pc-row{display:flex;gap:10px;align-items:center;padding:9px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:6px;font-size:13px;color:#C8D8E8;transition:all .2s;cursor:pointer;}
+#s9 .pc-row.checked{background:rgba(21,128,61,.06);border-color:rgba(74,222,128,.25);}
+#s9 .pc-row.checked .pc-box{background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.5);color:var(--lgreen);}
+#s9 .pc-box{width:20px;height:20px;border:1px solid rgba(255,255,255,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .2s;}
+/* LED glow panel */
+#s9 .led-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+#s9 .lp-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;}
+#s9 .led-glow{width:48px;height:48px;background:#FFCC00;border-radius:50%;animation:ledPulse 1.8s ease-in-out infinite;}
+#s9 .lp-note{font-size:13px;color:#C8D8E8;text-align:center;line-height:1.6;}
+#s9 .outcomes{display:flex;flex-direction:column;gap:10px;}
+#s9 .outcome-card{padding:12px 14px;border-radius:8px;}
+#s9 .outcome-card.pass{background:rgba(21,128,61,.08);border:1px solid rgba(21,128,61,.25);}
+#s9 .outcome-card.fail{background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);}
+#s9 .oc-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+#s9 .outcome-card.pass .oc-title{color:var(--lgreen);}
+#s9 .outcome-card.fail .oc-title{color:var(--lred);}
+#s9 .oc-desc{font-size:12px;color:var(--grey);line-height:1.5;}
+
+/* ══ SLIDE 10 — FAULT FINDING ══ */
+#s10{background:var(--navy);}
+#s10 .ga{width:500px;height:400px;bottom:-80px;left:-60px;background:radial-gradient(circle,rgba(96,165,250,.08),transparent 60%);}
+#s10 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:40px 60px;}
+#s10 h2{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--white);margin-bottom:6px;}
+#s10 .sub{font-size:14px;color:var(--grey);margin-bottom:22px;}
+#s10 .fault-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;}
+#s10 .fault-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px 16px;display:flex;flex-direction:column;gap:8px;transition:all .2s;cursor:pointer;}
+#s10 .fault-card:hover{border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.04);}
+#s10 .fc-step{font-family:'DM Mono',monospace;font-size:9px;color:var(--lcopper);letter-spacing:1px;margin-bottom:4px;}
+#s10 .fc-symptom{font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px;}
+#s10 .fc-check{font-size:12px;color:var(--grey);line-height:1.5;}
+#s10 .fc-fix{font-size:12px;color:var(--lpcb);line-height:1.5;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);}
+#s10 .process-box{margin-top:14px;padding:12px 18px;background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.2);border-radius:8px;display:flex;gap:14px;align-items:center;font-size:13px;color:#C8D8E8;}
+
+/* ══ SLIDE 11 — CLOSING ══ */
+#s11{background:radial-gradient(ellipse at 30% 40%,#0D1C30,#040C06);}
+#s11 .ga{width:600px;height:600px;top:-150px;right:-150px;background:radial-gradient(circle,rgba(180,83,9,.12),transparent 55%);}
+#s11 .gb{width:400px;height:300px;bottom:-80px;left:-60px;background:radial-gradient(ellipse,rgba(26,92,42,.1),transparent 60%);}
+#s11 .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--lcopper),var(--copper),transparent);}
+#s11 .inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:52px 80px;justify-content:center;max-width:760px;}
+#s11 .day-done{font-family:'DM Mono',monospace;font-size:11px;color:var(--lcopper);letter-spacing:4px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+#s11 .day-done::before{content:'';display:block;width:32px;height:1px;background:var(--lcopper);}
+#s11 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,56px);font-weight:700;color:var(--white);line-height:1.15;margin-bottom:18px;}
+#s11 h2 em{color:var(--lcopper);font-style:italic;}
+#s11 .can-do{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+#s11 .cd-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#C8D8E8;}
+#s11 .cd-check{width:20px;height:20px;background:rgba(180,83,9,.15);border:1px solid rgba(180,83,9,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--lcopper);flex-shrink:0;}
+#s11 .tomorrow-box{padding:16px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:14px;color:#C8D8E8;}
+#s11 .tomorrow-box strong{color:var(--lcopper);}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="top-count" id="topCount">01 / 11</div>
+<div class="deck" id="deck">
+
+<!-- ══ SLIDE 1 — OPENING ══ -->
+<div class="slide active" id="s1">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="content">
+    <div class="day-label au">DAY 7 &nbsp;&middot;&nbsp; EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</div>
+    <h1 class="au"><em>PCB Assembly</em><br>— Soldering<br>a Full Board</h1>
+    <p class="sub au">Today you assemble a complete circuit board from scratch. Every component you insert, every joint you make, matters. At the end of the session, you power the board and test it.</p>
+    <div class="board-review au">
+      <div class="br-label">BOARD REVIEW — DAY 6 WORK</div>
+      <div class="br-text">Take out your practice PCB from yesterday. Hold it under the light. Count your joints. How many are shiny and volcano-shaped? Any cold joints you can already see need to be reflowed before today's work begins.</div>
+    </div>
+    <div class="recap-q au">
+      <div class="rq-label">DAY 6 RECALL &mdash; 30 SECONDS</div>
+      <div class="rq-text">Name the single most important rule about where to feed solder when making a joint. Then name the five-point quality checklist you used to assess your joint.</div>
+    </div>
+  </div>
+  <div class="inst au"><p>EE LAB &nbsp;&middot;&nbsp; KLE-CTIE</p><p>KLE TECHNOLOGICAL UNIVERSITY</p><p>HUBBALLI &nbsp;&middot;&nbsp; KARNATAKA</p></div>
+</div>
+
+<!-- ══ SLIDE 2 — TODAY'S PCB ══ -->
+<div class="slide" id="s2">
+  <div class="glow ga"></div>
+  <div class="layout">
+    <div class="left">
+      <div class="au"><span class="tag tag-pcb">TODAY'S BOARD</span></div>
+      <h2 class="au">What You Will<br>Build <span>Today</span></h2>
+      <p class="intro au">A simple but complete LED indicator circuit. When assembled correctly and powered with your 9V battery, two LEDs light up and a switch controls one of them. Every component has a purpose.</p>
+      <div class="components-list">
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(180,83,9,.2);border:1px solid rgba(180,83,9,.4);color:var(--lcopper);">R</span><span class="cr-name">Resistors (470&Omega; &amp; 1k&Omega;)</span><span class="cr-qty">4&times;</span></div>
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);color:#FCA5A5;">D</span><span class="cr-name">Diodes (1N4007)</span><span class="cr-qty">2&times;</span></div>
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(16,84,168,.2);border:1px solid rgba(96,165,250,.3);color:var(--lblue);">C</span><span class="cr-name">Electrolytic Capacitor (100&micro;F)</span><span class="cr-qty">1&times;</span></div>
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.3);color:#FDE68A;">LED</span><span class="cr-name">LEDs (Red &amp; Green)</span><span class="cr-qty">2&times;</span></div>
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.3);color:var(--lgrey);">SW</span><span class="cr-name">Push Switch</span><span class="cr-qty">1&times;</span></div>
+        <div class="comp-row au"><span class="cr-badge" style="background:rgba(26,92,42,.15);border:1px solid rgba(34,197,94,.25);color:var(--lpcb);">J</span><span class="cr-name">Battery Header (2-pin)</span><span class="cr-qty">1&times;</span></div>
+      </div>
+      <div class="circuit-desc au">
+        <div class="cd-label">WHAT IT DOES WHEN COMPLETE</div>
+        <div class="cd-text">Red LED: always on when battery connected &mdash; power indicator. Green LED: controlled by push switch &mdash; lights when pressed. Capacitor: smooths voltage fluctuations. Diodes: protect against reverse polarity.</div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- PCB layout SVG -->
+      <svg viewBox="0 0 260 300" fill="none" xmlns="http://www.w3.org/2000/svg" width="95%">
+        <!-- Board -->
+        <rect x="10" y="10" width="240" height="280" rx="10" fill="rgba(26,92,42,0.2)" stroke="rgba(34,197,94,0.35)" stroke-width="1.5"/>
+        <!-- Silk screen outline -->
+        <rect x="20" y="20" width="220" height="260" rx="8" fill="none" stroke="rgba(34,197,94,0.15)" stroke-width="1" stroke-dasharray="4,3"/>
+        <!-- PCB traces -->
+        <line x1="60" y1="80" x2="200" y2="80" stroke="rgba(180,83,9,0.5)" stroke-width="2.5"/>
+        <line x1="60" y1="220" x2="200" y2="220" stroke="rgba(180,83,9,0.4)" stroke-width="2"/>
+        <line x1="80" y1="80" x2="80" y2="220" stroke="rgba(180,83,9,0.3)" stroke-width="1.5"/>
+        <line x1="130" y1="80" x2="130" y2="140" stroke="rgba(180,83,9,0.3)" stroke-width="1.5"/>
+        <line x1="180" y1="80" x2="180" y2="220" stroke="rgba(180,83,9,0.3)" stroke-width="1.5"/>
+        <!-- Resistors -->
+        <rect x="55" y="95" width="50" height="16" rx="5" fill="rgba(180,83,9,0.2)" stroke="rgba(245,158,11,0.5)" stroke-width="1.2"/>
+        <text x="80" y="107" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(245,158,11,0.7)">470&Omega;</text>
+        <rect x="115" y="95" width="50" height="16" rx="5" fill="rgba(180,83,9,0.2)" stroke="rgba(245,158,11,0.5)" stroke-width="1.2"/>
+        <text x="140" y="107" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(245,158,11,0.7)">1k&Omega;</text>
+        <!-- Diodes -->
+        <polygon points="85,135 85,155 105,145" fill="rgba(220,38,38,0.2)" stroke="rgba(252,165,165,0.5)" stroke-width="1.2"/>
+        <line x1="105" y1="135" x2="105" y2="155" stroke="rgba(252,165,165,0.5)" stroke-width="1.5"/>
+        <polygon points="145,135 145,155 165,145" fill="rgba(220,38,38,0.15)" stroke="rgba(252,165,165,0.4)" stroke-width="1.2"/>
+        <line x1="165" y1="135" x2="165" y2="155" stroke="rgba(252,165,165,0.4)" stroke-width="1.5"/>
+        <!-- Capacitor -->
+        <ellipse cx="130" cy="185" rx="14" ry="20" fill="rgba(16,84,168,0.15)" stroke="rgba(96,165,250,0.4)" stroke-width="1.2"/>
+        <text x="130" y="189" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(96,165,250,0.6)">100&micro;F</text>
+        <!-- LEDs -->
+        <circle cx="72" cy="245" r="10" fill="rgba(255,50,50,0.2)" stroke="rgba(255,100,100,0.6)" stroke-width="1.5"/>
+        <circle cx="72" cy="245" r="5" fill="rgba(255,50,50,0.4)"/>
+        <circle cx="188" cy="245" r="10" fill="rgba(34,197,94,0.2)" stroke="rgba(74,222,128,0.6)" stroke-width="1.5"/>
+        <circle cx="188" cy="245" r="5" fill="rgba(34,197,94,0.4)"/>
+        <!-- Switch -->
+        <rect x="108" y="238" width="24" height="18" rx="4" fill="rgba(100,116,139,0.2)" stroke="rgba(200,212,224,0.4)" stroke-width="1.2"/>
+        <!-- Header -->
+        <rect x="95" y="270" width="30" height="12" rx="3" fill="rgba(26,92,42,0.2)" stroke="rgba(34,197,94,0.4)" stroke-width="1"/>
+        <!-- Labels -->
+        <text x="72"  y="263" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(255,100,100,0.5)">LED1</text>
+        <text x="188" y="263" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(74,222,128,0.5)">LED2</text>
+        <text x="120" y="255" font-family="DM Mono,monospace" font-size="7" fill="rgba(200,212,224,0.3)">SW</text>
+        <text x="105" y="283" font-family="DM Mono,monospace" font-size="7" fill="rgba(34,197,94,0.4)">9V</text>
+        <!-- Mounting holes -->
+        <circle cx="25"  cy="25"  r="5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <circle cx="235" cy="25"  r="5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <circle cx="25"  cy="285" r="5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <circle cx="235" cy="285" r="5" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 3 — SEQUENCING ══ -->
+<div class="slide" id="s3">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-cop">THE ASSEMBLY RULE</span></div>
+      <h2 class="au">Shortest<br>Components <span>First</span></h2>
+      <p class="why au">Insert and solder components in order of increasing height. Shorter components sit flush against the board. If you solder tall components first, the board cannot lie flat when you flip it to solder the short ones — they fall out of their holes or sit at angles.</p>
+      <div class="seq-steps">
+        <div class="seq-step au"><div class="ss-order">1</div><div><div class="ss-name">Resistors</div><div class="ss-why">Lowest profile, bend legs flat to board after insertion</div><div class="ss-height">~2mm above board</div></div></div>
+        <div class="seq-step au"><div class="ss-order">2</div><div><div class="ss-name">Diodes</div><div class="ss-why">Similar height to resistors, polarity must be confirmed first</div><div class="ss-height">~3mm above board</div></div></div>
+        <div class="seq-step au"><div class="ss-order">3</div><div><div class="ss-name">Capacitors</div><div class="ss-why">Ceramic first (low), electrolytic second (taller)</div><div class="ss-height">~5&ndash;12mm above board</div></div></div>
+        <div class="seq-step au"><div class="ss-order">4</div><div><div class="ss-name">LEDs</div><div class="ss-why">Height must be controlled manually &mdash; bend legs to set height</div><div class="ss-height">~8mm above board (standard)</div></div></div>
+        <div class="seq-step au"><div class="ss-order">5</div><div><div class="ss-name">Switch &amp; Headers</div><div class="ss-why">Tallest, last. Mechanical fit before soldering.</div><div class="ss-height">~10&ndash;15mm above board</div></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Height comparison SVG -->
+      <div class="height-panel au">
+        <div class="hp-label">COMPONENT HEIGHT COMPARISON</div>
+        <svg viewBox="0 0 300 160" fill="none" width="100%">
+          <!-- PCB base -->
+          <rect x="10" y="130" width="280" height="14" rx="3" fill="rgba(26,92,42,0.3)" stroke="rgba(34,197,94,0.4)" stroke-width="1"/>
+          <!-- Resistor (shortest) -->
+          <rect x="30" y="120" width="30" height="10" rx="3" fill="rgba(180,83,9,0.3)" stroke="rgba(245,158,11,0.5)" stroke-width="1"/>
+          <line x1="45" y1="120" x2="45" y2="130" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <text x="45" y="155" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(245,158,11,0.5)">R</text>
+          <!-- Diode -->
+          <rect x="80" y="115" width="30" height="15" rx="3" fill="rgba(220,38,38,0.2)" stroke="rgba(252,165,165,0.4)" stroke-width="1"/>
+          <line x1="95" y1="115" x2="95" y2="130" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <text x="95" y="155" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(252,165,165,0.5)">D</text>
+          <!-- Capacitor -->
+          <rect x="130" y="100" width="30" height="30" rx="5" fill="rgba(16,84,168,0.2)" stroke="rgba(96,165,250,0.4)" stroke-width="1"/>
+          <line x1="145" y1="100" x2="145" y2="130" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <text x="145" y="155" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(96,165,250,0.5)">C</text>
+          <!-- LED -->
+          <circle cx="195" cy="105" r="12" fill="rgba(255,200,0,0.15)" stroke="rgba(255,200,0,0.4)" stroke-width="1"/>
+          <line x1="195" y1="117" x2="195" y2="130" stroke="rgba(200,212,224,0.4)" stroke-width="1.5"/>
+          <text x="195" y="155" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,200,0,0.5)">LED</text>
+          <!-- Switch -->
+          <rect x="228" y="88" width="34" height="42" rx="5" fill="rgba(100,116,139,0.2)" stroke="rgba(200,212,224,0.3)" stroke-width="1"/>
+          <line x1="245" y1="88" x2="245" y2="130" stroke="rgba(200,212,224,0.3)" stroke-width="1.5"/>
+          <text x="245" y="155" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(200,212,224,0.3)">SW</text>
+          <!-- Height arrow -->
+          <line x1="285" y1="88" x2="285" y2="130" stroke="rgba(180,83,9,0.4)" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="292" y="112" font-family="DM Mono,monospace" font-size="7" fill="rgba(180,83,9,0.5)" transform="rotate(90,292,112)">SHORT → TALL</text>
+        </svg>
+      </div>
+      <div class="rule-box au">
+        <div class="rb-label">BEND THE LEGS AFTER INSERTION</div>
+        <div class="rb-text">Once a component is inserted into the PCB from the component side, gently bend its legs outward at 45&deg; on the solder side. This holds the component in place when you flip the board to solder — it will not fall out.</div>
+      </div>
+      <div style="padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:1px;margin-bottom:5px;">BATCH BEFORE SOLDERING</div>
+        <div style="font-size:13px;color:#C8D8E8;line-height:1.6;">Insert all resistors first, flip the board, solder all resistors, flip back, trim. Then move to diodes. Do not mix components across steps — it causes errors.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 4 — RESISTORS ══ -->
+<div class="slide step-slide" id="s4">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(180,83,9,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-cop">STEP 1 OF 5</span></div>
+      <h2 class="au" style="color:var(--white);">Soldering<br><span style="color:var(--lcopper);">Resistors</span></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">Resistors have no polarity &mdash; they can go in either way. Confirm the value using the colour code before inserting. All four resistors go in before any are soldered.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn" style="background:var(--copper);">1</div><div class="st">Read the <span style="color:var(--lcopper);">colour code</span> of each resistor. Confirm against the circuit diagram before inserting. R1 &amp; R2 = 470&Omega;, R3 &amp; R4 = 1k&Omega;.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">2</div><div class="st">Insert the resistor body <span style="color:var(--lcopper);">flush to the board</span>. Bend the legs slightly outward on the solder side to hold it in place.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">3</div><div class="st">Insert <span style="color:var(--lcopper);">all four resistors</span> before soldering any. Flip the board. Verify all four are seated flat.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">4</div><div class="st">Solder each leg: <span style="color:var(--lcopper);">heat pad + leg</span> 1&ndash;2 seconds, feed solder to the joint (not the iron), remove solder, remove iron, hold still.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">5</div><div class="st">After all joints are made and cooled, <span style="color:var(--lcopper);">trim the legs</span> close to the solder surface with side cutters. Inspect each joint.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <!-- Resistor detail -->
+      <div class="comp-detail-box au" style="background:rgba(180,83,9,.07);border:1px solid rgba(180,83,9,.2);">
+        <div class="cdb-label" style="color:var(--lcopper);">RESISTOR REMINDER</div>
+        <div class="cdb-text">No polarity &mdash; either direction works. Colour bands face the same direction for neatness. Legs bent flush means the body sits flat on the board surface with zero gap. A gap is acceptable but flush looks professional and is mechanically stronger.</div>
+      </div>
+      <!-- Resistor SVG -->
+      <svg viewBox="0 0 300 90" fill="none" width="100%" class="au">
+        <line x1="20" y1="45" x2="60" y2="45" stroke="#C8D4E0" stroke-width="2.5"/>
+        <rect x="60" y="26" width="180" height="38" rx="10" fill="rgba(200,160,80,0.2)" stroke="rgba(200,160,80,0.5)" stroke-width="1.5"/>
+        <rect x="82"  y="26" width="20" height="38" rx="3" fill="#FFD700" opacity=".85"/>
+        <rect x="112" y="26" width="20" height="38" rx="3" fill="#9400D3" opacity=".85"/>
+        <rect x="142" y="26" width="20" height="38" rx="3" fill="#8B4513" opacity=".85"/>
+        <rect x="202" y="26" width="20" height="38" rx="3" fill="#C0C0C0" opacity=".85"/>
+        <line x1="240" y1="45" x2="280" y2="45" stroke="#C8D4E0" stroke-width="2.5"/>
+        <text x="92"  y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,215,0,0.6)">4</text>
+        <text x="122" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(148,0,211,0.7)">7</text>
+        <text x="152" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(139,69,19,0.7)">&times;10</text>
+        <text x="212" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(192,192,192,0.6)">&plusmn;10%</text>
+        <text x="150" y="90" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(245,158,11,0.5)" letter-spacing="1">470&Omega; &mdash; YELLOW VIOLET BROWN SILVER</text>
+      </svg>
+      <div class="warn-strip au"><div class="ws-text"><strong style="color:#FCA5A5;">Wrong value = wrong circuit.</strong> A 10k&Omega; where a 470&Omega; belongs means the LED may not light at all. Check the code before every insertion.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 5 — DIODES ══ -->
+<div class="slide step-slide" id="s5">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(220,38,38,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-red">STEP 2 OF 5</span></div>
+      <h2 class="au" style="color:var(--white);">Soldering<br><span style="color:var(--lred);">Diodes</span></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">Diodes are polarised &mdash; direction matters. Installing a diode backwards will block current in the circuit it is protecting. Confirm the band orientation against the PCB silk screen before inserting.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn" style="background:var(--red);">1</div><div class="st">Find the <span style="color:var(--lred);">silver/grey band</span> on the diode body. This marks the cathode (&minus;) end. The PCB silk screen has a matching band symbol showing which way it faces.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--red);">2</div><div class="st">Align the diode band with the <span style="color:var(--lred);">band marking on the PCB</span>. Insert gently &mdash; do not force. Bend legs to hold.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--red);">3</div><div class="st"><span style="color:var(--lred);">Double-check</span> both diodes before soldering. Ask the person next to you to verify. Two eyes on polarity is a professional habit.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--red);">4</div><div class="st">Solder both legs of each diode. Same technique as resistors: <span style="color:var(--lred);">heat joint, feed solder</span>, remove solder, remove iron, hold still.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--red);">5</div><div class="st">Trim and <span style="color:var(--lred);">inspect</span>. Check the band orientation one final time after soldering — it is easy to verify while the joint is visible.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="comp-detail-box au" style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);">
+        <div class="cdb-label" style="color:var(--lred);">DIODE POLARITY RULE</div>
+        <div class="cdb-text">Silver band = cathode = the negative end. On the PCB, the silk screen shows a triangle with a vertical bar — the bar end matches the silver band on the component. If in doubt: do not solder. Check with the instructor.</div>
+      </div>
+      <!-- Diode SVG -->
+      <svg viewBox="0 0 300 100" fill="none" width="100%" class="au">
+        <line x1="20" y1="50" x2="70" y2="50" stroke="#C8D4E0" stroke-width="2.5"/>
+        <polygon points="70,30 70,70 130,50" fill="rgba(220,38,38,0.2)" stroke="rgba(252,165,165,0.6)" stroke-width="2"/>
+        <line x1="130" y1="28" x2="130" y2="72" stroke="rgba(252,165,165,0.8)" stroke-width="3"/>
+        <rect x="130" y="28" width="16" height="44" rx="4" fill="rgba(190,190,190,0.4)" stroke="rgba(220,220,220,0.6)" stroke-width="1.5"/>
+        <line x1="146" y1="50" x2="200" y2="50" stroke="#C8D4E0" stroke-width="2.5"/>
+        <!-- Glass body -->
+        <rect x="60" y="32" width="90" height="36" rx="8" fill="rgba(200,220,255,0.08)" stroke="rgba(200,220,255,0.2)" stroke-width="1"/>
+        <text x="35"  y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(96,165,250,0.5)">ANODE +</text>
+        <text x="160" y="78" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(252,165,165,0.6)">CATHODE &minus;</text>
+        <text x="138" y="25" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(220,220,220,0.5)">SILVER BAND</text>
+        <line x1="138" y1="27" x2="138" y2="32" stroke="rgba(220,220,220,0.3)" stroke-width="1"/>
+      </svg>
+      <div class="warn-strip au"><div class="ws-text"><strong style="color:#FCA5A5;">A reversed diode will not damage the circuit immediately</strong> &mdash; but the protection it provides will be absent. The circuit may appear to work but will fail under a reverse voltage event. Check the band. Every time.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 6 — CAPACITORS ══ -->
+<div class="slide step-slide" id="s6">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(16,84,168,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-blue">STEP 3 OF 5</span></div>
+      <h2 class="au" style="color:var(--white);">Soldering<br><span style="color:var(--lblue);">Capacitors</span></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">One electrolytic capacitor on this board. Polarity is critical &mdash; a reversed electrolytic capacitor in a powered circuit can bulge, leak, or in extreme cases rupture.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn" style="background:var(--blue);">1</div><div class="st">Identify the <span style="color:var(--lblue);">positive leg</span> (longer, or marked + on the body) and the <span style="color:var(--lblue);">negative leg</span> (shorter, white stripe on body).</div></div>
+        <div class="step au"><div class="sn" style="background:var(--blue);">2</div><div class="st">Match the <span style="color:var(--lblue);">+ leg to the + hole</span> on the PCB (marked with a + symbol on the silk screen). Confirm before inserting.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--blue);">3</div><div class="st">Insert fully. The capacitor body should sit <span style="color:var(--lblue);">flush against the board</span>, not elevated. Press gently if it lifts.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--blue);">4</div><div class="st">Solder both legs. Use <span style="color:var(--lblue);">slightly less heat time</span> than resistors &mdash; electrolytic capacitors are temperature-sensitive. 1 second heat maximum.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--blue);">5</div><div class="st">After cooling, <span style="color:var(--lblue);">visually verify</span>: stripe (negative) matches the board marking. Trim excess leg.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="comp-detail-box au" style="background:rgba(16,84,168,.07);border:1px solid rgba(96,165,250,.2);">
+        <div class="cdb-label" style="color:var(--lblue);">ELECTROLYTIC POLARITY IDENTIFICATION</div>
+        <div class="cdb-text">Three ways to identify the negative leg: (1) it is shorter when new, (2) the body has a white or grey stripe on the negative side, (3) the PCB silk screen has a D-shaped symbol with a flat on the negative side. All three should agree.</div>
+      </div>
+      <!-- Capacitor SVG -->
+      <svg viewBox="0 0 260 120" fill="none" width="100%" class="au">
+        <!-- Body -->
+        <ellipse cx="130" cy="60" rx="40" ry="52" fill="rgba(16,84,168,0.15)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5"/>
+        <!-- Negative stripe -->
+        <path d="M 92,30 Q 90,60 92,90" stroke="rgba(200,212,224,0.5)" stroke-width="14" stroke-linecap="round"/>
+        <!-- + symbol -->
+        <text x="148" y="64" font-family="DM Mono,monospace" font-size="18" font-weight="700" fill="rgba(96,165,250,0.6)">+</text>
+        <!-- Legs -->
+        <line x1="118" y1="112" x2="118" y2="135" stroke="rgba(200,212,224,0.6)" stroke-width="2.5"/>
+        <line x1="142" y1="112" x2="142" y2="135" stroke="rgba(200,212,224,0.6)" stroke-width="2.5"/>
+        <!-- Labels -->
+        <text x="118" y="150" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(252,165,165,0.5)">&minus;</text>
+        <text x="142" y="150" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="rgba(96,165,250,0.6)">+</text>
+        <text x="88" y="64" text-anchor="end" font-family="DM Mono,monospace" font-size="9" fill="rgba(200,212,224,0.3)">WHITE<br/>STRIPE</text>
+        <text x="60" y="60" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(200,212,224,0.2)">&#x2212;</text>
+      </svg>
+      <div class="warn-strip au"><div class="ws-text"><strong style="color:#FCA5A5;">Reversed electrolytic = dangerous.</strong> When powered, a reversed electrolytic capacitor builds internal pressure. The vent on the top will bulge. In worst case it ruptures. Confirm polarity before powering any board.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 7 — LEDs ══ -->
+<div class="slide step-slide" id="s7">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(245,166,35,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">STEP 4 OF 5</span></div>
+      <h2 class="au" style="color:var(--white);">Soldering<br><span style="color:var(--gold);">LEDs</span></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">LEDs are polarised and height-controlled. The long leg is always the anode (+). Height matters for appearance &mdash; decide how high off the board you want the LED to sit before soldering. You cannot change it after.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn" style="background:rgba(180,83,9,0.8);">1</div><div class="st">Confirm polarity: <span style="color:var(--gold);">longer leg = anode (+)</span>. Match to the + hole on the PCB silk screen. The flat side of the LED body marks the cathode (&minus;).</div></div>
+        <div class="step au"><div class="sn" style="background:rgba(180,83,9,0.8);">2</div><div class="st">Before soldering, <span style="color:var(--gold);">test the LED</span> in a breadboard socket with a resistor and 9V battery. Confirm it lights. A dead LED wastes a pad.</div></div>
+        <div class="step au"><div class="sn" style="background:rgba(180,83,9,0.8);">3</div><div class="st">Insert the LED into the PCB. Hold it at the <span style="color:var(--gold);">desired height</span> (approximately 8mm above the board surface for this build).</div></div>
+        <div class="step au"><div class="sn" style="background:rgba(180,83,9,0.8);">4</div><div class="st">While holding height, solder <span style="color:var(--gold);">one leg only</span>. Check the LED is vertical and at the correct height. Then solder the second leg.</div></div>
+        <div class="step au"><div class="sn" style="background:rgba(180,83,9,0.8);">5</div><div class="st">Trim legs. The LED must be perfectly <span style="color:var(--gold);">vertical</span> when complete &mdash; a tilted LED catches the eye immediately on the finished board.</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="comp-detail-box au" style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);">
+        <div class="cdb-label" style="color:var(--gold);">LED POLARITY IDENTIFICATION</div>
+        <div class="cdb-text">Three identification methods: (1) longer leg = anode (+), (2) flat side on plastic body = cathode (&minus;), (3) inside the LED dome, the larger metal plate = cathode. All three should agree. If legs have been trimmed, use the flat side or internal plate.</div>
+      </div>
+      <!-- LED SVG -->
+      <svg viewBox="0 0 260 140" fill="none" width="100%" class="au">
+        <!-- LED body -->
+        <ellipse cx="130" cy="55" rx="30" ry="28" fill="rgba(255,200,0,0.12)" stroke="rgba(255,200,0,0.5)" stroke-width="1.5"/>
+        <!-- Flat side -->
+        <path d="M 103,62 Q 100,55 103,48" stroke="rgba(255,200,0,0.6)" stroke-width="3" stroke-linecap="round"/>
+        <!-- Internal plates -->
+        <polygon points="115,50 118,50 118,60 115,60 112,55" fill="rgba(200,180,0,0.3)" stroke="rgba(255,200,0,0.3)" stroke-width="0.8"/>
+        <polygon points="142,46 145,46 148,55 145,64 142,64 139,55" fill="rgba(200,180,0,0.2)" stroke="rgba(255,200,0,0.3)" stroke-width="0.8"/>
+        <!-- Legs -->
+        <line x1="118" y1="83" x2="118" y2="120" stroke="rgba(200,212,224,0.5)" stroke-width="2"/>
+        <line x1="142" y1="83" x2="142" y2="112" stroke="rgba(200,212,224,0.5)" stroke-width="2"/>
+        <!-- Labels -->
+        <text x="110" y="135" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(252,165,165,0.5)">&minus; (SHORT)</text>
+        <text x="150" y="128" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(96,165,250,0.6)">+ (LONG)</text>
+        <!-- Light rays -->
+        <line x1="155" y1="28" x2="168" y2="14" stroke="rgba(255,200,0,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="162" y1="38" x2="178" y2="30" stroke="rgba(255,200,0,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="165" y1="50" x2="182" y2="50" stroke="rgba(255,200,0,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Flat side arrow -->
+        <text x="92" y="58" text-anchor="end" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,200,0,0.4)">FLAT SIDE</text>
+        <line x1="93" y1="55" x2="102" y2="55" stroke="rgba(255,200,0,0.3)" stroke-width="1"/>
+      </svg>
+      <div style="padding:10px 13px;background:rgba(26,92,42,.07);border:1px solid rgba(34,197,94,.2);border-radius:6px;" class="au">
+        <div style="font-size:12px;color:#C8D8E8;line-height:1.5;">Solder one leg first, verify height and orientation, then solder the second. You have one chance to get the height right &mdash; the joint is permanent after both legs are soldered.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 8 — SWITCH & HEADERS ══ -->
+<div class="slide step-slide" id="s8">
+  <div class="glow ga" style="background:radial-gradient(circle,rgba(100,116,139,.1),transparent 60%);"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-cop">STEP 5 OF 5</span></div>
+      <h2 class="au" style="color:var(--white);">Switch<br>&amp; <span style="color:var(--lcopper);">Battery Header</span></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:16px;" class="au">The switch and battery header are the last components &mdash; they are the tallest and must sit perfectly square on the board. Mechanical alignment is checked before soldering even one leg.</p>
+      <div class="steps">
+        <div class="step au"><div class="sn" style="background:var(--copper);">1</div><div class="st">Push the <span style="color:var(--lcopper);">switch</span> into its footprint. It should click firmly into the holes &mdash; all four legs must be through the board before soldering begins.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">2</div><div class="st">Check the switch is <span style="color:var(--lcopper);">perfectly square</span> and flush against the board from both directions. A tilted switch is permanent once soldered.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">3</div><div class="st">Solder <span style="color:var(--lcopper);">one leg only</span> on the switch. Recheck squareness from above and from the side. Only then solder the remaining three legs.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">4</div><div class="st">Insert the <span style="color:var(--lcopper);">2-pin battery header</span> into the power input holes. Polarity is marked on the PCB &mdash; + to +. One leg first, check alignment, then second.</div></div>
+        <div class="step au"><div class="sn" style="background:var(--copper);">5</div><div class="st">Final board inspection before power: all joints shiny, no bridges, all component polarities correct, battery header polarity confirmed. <span style="color:var(--lcopper);">Call the instructor for sign-off.</span></div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="comp-detail-box au" style="background:rgba(100,116,139,.08);border:1px solid rgba(148,163,184,.2);">
+        <div class="cdb-label" style="color:var(--lgrey);">MECHANICAL ALIGNMENT GUIDE</div>
+        <div class="cdb-text">For through-hole switches: look from directly above the board &mdash; the switch body should appear to be perfectly parallel to the board edges. Then look from the side &mdash; the body should be level, not tilted forward or back. Both views must pass before soldering the remaining legs.</div>
+      </div>
+      <!-- Final board checklist -->
+      <div style="padding:12px 14px;background:rgba(180,83,9,.07);border:1px solid rgba(180,83,9,.2);border-radius:8px;" class="au">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lcopper);letter-spacing:1px;margin-bottom:8px;">PRE-POWER CHECKLIST</div>
+        <div style="display:flex;flex-direction:column;gap:5px;" id="preCheck">
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);" onclick="checkItem(this)">&#x25A1; All joints shiny and volcano-shaped</div>
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);" onclick="checkItem(this)">&#x25A1; No solder bridges between pads</div>
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);" onclick="checkItem(this)">&#x25A1; Diodes facing correct direction</div>
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);" onclick="checkItem(this)">&#x25A1; Capacitor polarity verified</div>
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);" onclick="checkItem(this)">&#x25A1; LED polarity verified</div>
+          <div style="font-size:12px;color:#C8D8E8;padding:4px 0;" onclick="checkItem(this)">&#x25A1; Battery header polarity verified</div>
+        </div>
+      </div>
+      <div style="padding:10px 13px;background:rgba(26,92,42,.07);border:1px solid rgba(34,197,94,.2);border-radius:6px;" class="au">
+        <div style="font-size:12px;color:var(--lpcb);line-height:1.5;"><strong>Instructor sign-off required</strong> before battery is connected. All six checks above must be confirmed. This is not optional.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 9 — LIVE TEST ══ -->
+<div class="slide" id="s9">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="left">
+      <div class="au"><span class="tag tag-gold">THE MOMENT OF TRUTH</span></div>
+      <h2 class="au">Power On &mdash;<br><em>Does It Work?</em></h2>
+      <p style="font-size:14px;color:#7B9AB8;line-height:1.7;margin-bottom:18px;" class="au">The instructor has checked your board. Now connect the 9V battery to the header. The red LED should light immediately as a power indicator. Press the switch &mdash; the green LED should light.</p>
+      <div class="pre-check" id="powerChecks">
+        <div class="pc-row au" onclick="toggleCheck(this)"><div class="pc-box">&#x2713;</div><span>Instructor has signed off on the board</span></div>
+        <div class="pc-row au" onclick="toggleCheck(this)"><div class="pc-box">&#x2713;</div><span>Battery is 9V and connected the correct polarity</span></div>
+        <div class="pc-row au" onclick="toggleCheck(this)"><div class="pc-box">&#x2713;</div><span>No one is touching any component while connecting</span></div>
+        <div class="pc-row au" onclick="toggleCheck(this)"><div class="pc-box">&#x2713;</div><span>Battery header connection is firm, not loose</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="led-panel au">
+        <div class="lp-label">RED LED &mdash; POWER ON</div>
+        <div class="led-glow" style="background:#FF2020;"></div>
+        <div class="lp-note">The red LED lights immediately when power is connected. If it does not &mdash; check battery polarity and the red LED orientation before anything else.</div>
+      </div>
+      <div class="led-panel au" style="background:rgba(34,197,94,.04);border-color:rgba(34,197,94,.2);">
+        <div class="lp-label" style="color:var(--lpcb);">GREEN LED &mdash; PRESS SWITCH</div>
+        <div class="led-glow" style="background:#00CC44;animation-name:ledPulse;animation-duration:1.4s;"></div>
+        <div class="lp-note">The green LED lights when the push switch is pressed. Release the switch — green LED goes off. Red LED stays on.</div>
+      </div>
+      <div class="outcomes au">
+        <div class="outcome-card pass"><div class="oc-title">Both LEDs work as expected</div><div class="oc-desc">Excellent. Your assembly is electrically correct. Move to the quality review on the next slide.</div></div>
+        <div class="outcome-card fail"><div class="oc-title">One or both LEDs do not work</div><div class="oc-desc">Do not panic. Disconnect the battery. Proceed to Slide 10 for the systematic fault-finding procedure. Every fault has a cause.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 10 — FAULT FINDING ══ -->
+<div class="slide" id="s10">
+  <div class="glow ga"></div>
+  <div class="inner">
+    <div class="au"><span class="tag tag-blue">FAULT FINDING</span></div>
+    <h2 class="au">Systematic Diagnosis</h2>
+    <p class="sub au">If the board did not work as expected: disconnect battery first. Then work through these checks in order. Each one rules out one possible cause.</p>
+    <div class="fault-grid">
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 01</div>
+        <div class="fc-symptom">Nothing lights up at all</div>
+        <div class="fc-check">Test battery voltage with multimeter (should be 8.5&ndash;9.2V). Check battery header connections with continuity mode. Verify header polarity matches board marking.</div>
+        <div class="fc-fix">&#x2192; Most common cause: battery header inserted backwards, or header solder joint not making contact.</div>
+      </div>
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 02</div>
+        <div class="fc-symptom">Red LED not lighting</div>
+        <div class="fc-check">Continuity: probe from battery + trace to red LED anode pad. Probe from red LED cathode pad through resistor to GND. If breaks found, cold joint in that path.</div>
+        <div class="fc-fix">&#x2192; Most common cause: red LED polarity reversed, or cold joint on LED or its current-limiting resistor.</div>
+      </div>
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 03</div>
+        <div class="fc-symptom">Green LED not lighting when switch pressed</div>
+        <div class="fc-check">Press switch. Use multimeter in DCV mode across switch terminals — should read ~9V when released, ~0V when pressed. If not switching: cold joint on switch legs.</div>
+        <div class="fc-fix">&#x2192; Most common cause: one switch leg not soldered, or green LED polarity reversed.</div>
+      </div>
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 04</div>
+        <div class="fc-symptom">LED very dim</div>
+        <div class="fc-check">Measure voltage across the LED with DCV. If significantly lower than expected Vf: wrong resistor value (too high) or high-resistance cold joint acting as additional resistance.</div>
+        <div class="fc-fix">&#x2192; Most common cause: wrong resistor value inserted, or a cold joint with measurable resistance in series.</div>
+      </div>
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 05</div>
+        <div class="fc-symptom">Component gets warm quickly</div>
+        <div class="fc-check">Disconnect battery immediately. A component that gets warm indicates excessive current — usually a solder bridge between two pads, or a component inserted incorrectly creating a short path.</div>
+        <div class="fc-fix">&#x2192; Most common cause: solder bridge between adjacent pads. Inspect under magnification. Use desoldering wick to remove bridge.</div>
+      </div>
+      <div class="fault-card au">
+        <div class="fc-step">CHECK 06</div>
+        <div class="fc-symptom">Intermittent — works sometimes</div>
+        <div class="fc-check">Gently flex the PCB while powered. If the fault appears and disappears: a cold joint that makes contact under pressure. Probe all joints with continuity mode while moving the board.</div>
+        <div class="fc-fix">&#x2192; Most common cause: cold joint that looks good visually but has no reliable bond. Reheat and reflow the suspect joint.</div>
+      </div>
+    </div>
+    <div class="process-box au">
+      <span style="font-size:20px;flex-shrink:0;">&#x1F50D;</span>
+      <span>The diagnostic process: <strong style="color:#C8D8E8;">Symptom → Isolate the circuit section → Continuity test the suspect path → Find the fault → Fix → Retest.</strong> This is the same process used in professional electronics repair.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 11 — CLOSING ══ -->
+<div class="slide" id="s11">
+  <div class="glow ga"></div><div class="glow gb"></div>
+  <div class="accent"></div>
+  <div class="inner">
+    <div class="day-done au">DAY 7 COMPLETE &nbsp;&middot;&nbsp; 3 SESSIONS TO GO</div>
+    <h2 class="au">You assembled<br>a complete<br><em>working circuit.</em></h2>
+    <div class="can-do au">
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Sequence component assembly correctly — shortest to tallest</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Solder resistors, diodes, capacitors, LEDs, switches, and headers</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Verify polarised components before soldering</div>
+      <div class="cd-row"><div class="cd-check">&#x2713;</div>Diagnose a non-working PCB using a systematic fault-finding approach</div>
+    </div>
+    <div class="tomorrow-box au">
+      <strong>Tomorrow &mdash; Day 8:</strong> Desoldering and rework. You will learn to remove components you just soldered &mdash; using desoldering wick and a solder sucker. Day 8 is where good solderers become complete solderers.
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#x2039;</button>
+  <div class="nav-dots" id="dots"></div>
+  <span class="slide-num" id="slideNum">1 / 11</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">&#x203A;</button>
+</nav>
+<button class="notes-btn" id="notesBtn" onclick="toggleNotes()">SPEAKER NOTES &#x2191;</button>
+<div class="notes-panel" id="notesPanel">
+  <div class="notes-tag">SPEAKER NOTES</div>
+  <div class="notes-body" id="notesBody"></div>
+</div>
+
+<script>
+const TOTAL = 11;
+let cur = 0, notesOpen = false;
+
+const NOTES = [
+  `<strong>The board review at the start is a quality gate — not optional.</strong> Before any new work begins, every participant should inspect yesterday's joints under a light. Any cold joint (dull, grey, blobby) must be reflowed before the session advances. Say: "A cold joint today will become a fault in today's circuit. Fix it now, in 30 seconds, rather than diagnose it for 20 minutes at the end." <em>The recall: "Feed solder to the joint, not to the iron." Quality checklist: shiny surface, volcano profile, leg visible, no bridges, passes tug test. Spend 4 minutes on the recall and board review before advancing.</em>`,
+
+  `<strong>Show the PCB to the room before any slides.</strong> Hold up the blank practice PCB and say: "By the end of today, this board will have all these components soldered onto it, and when you connect this battery" — hold up the 9V battery — "it will do something. Something you built." <em>The circuit description at the bottom of the left panel is important context — participants should understand what the circuit does before they build it. A red LED as a power indicator and a green LED controlled by a switch is a concept they will recognise from real devices (e.g. standby lights on equipment).</em>`,
+
+  `<strong>The sequencing rule is the most important professional practice in this session.</strong> Demonstrate it physically: take a tall switch and insert it first. Then try to insert a resistor — the board cannot lie flat. "This is why sequence matters. It is not arbitrary. It is engineering workflow." <em>The "batch before soldering" rule is equally important — insert all resistors, then solder all resistors, then trim all resistors, then move to diodes. Mixing component types leads to errors. This batching approach is how professional PCB assembly lines work, and it is why they maintain quality at scale.</em>`,
+
+  `<strong>Confirm resistor values verbally before anyone inserts a single component.</strong> Say: "Hold up your 470Ω resistor. Yellow-violet-brown. Hold up your 1kΩ. Brown-black-red." Wait for all participants to have the correct components in hand before allowing insertion. A wrong resistor value in a circuit is invisible once soldered and will cause a fault that is hard to diagnose. <em>The most common error here is mixing up 470Ω and 1kΩ because participants are moving quickly. Slow down. Confirm each value before insertion. This 30-second check prevents a 20-minute fault-finding session later.</em>`,
+
+  `<strong>The "two eyes on polarity" habit is a professional norm worth introducing explicitly.</strong> In real electronics manufacturing, a second-person check on polarised components before soldering is standard procedure on critical assemblies. Ask participants to check each other's diode orientation before soldering. "Tell the person next to you: 'My D1 band is pointing towards the right.' They should verify." <em>If a participant has already soldered a reversed diode: do not panic the room. Say quietly: "We are going to desolder and replace that tomorrow on Day 8. This is exactly why Day 8 exists." Use it as a motivating preview of the next session.</em>`,
+
+  `<strong>The "1 second maximum heat" instruction for electrolytic capacitors is important.</strong> Electrolytic capacitors are more heat-sensitive than resistors. Prolonged iron contact can damage the electrolyte and reduce capacitance or cause early failure. The joint technique is identical — the difference is timing only. <em>The "three identification methods" approach on this slide is deliberate: if one method is ambiguous (e.g. legs have been trimmed to equal length), the other two provide confirmation. Teaching multiple verification methods builds the habit of cross-checking, which is the foundation of fault-free assembly.</em>`,
+
+  `<strong>The "test before soldering" instruction for LEDs is genuinely useful.</strong> A defective LED installed and soldered onto a PCB requires desoldering to replace — 5 minutes of rework that could have been avoided by a 10-second breadboard test. Have each participant test their LEDs in the breadboard with a 470Ω resistor and 9V battery before inserting them into the PCB. <em>The "solder one leg, check height and orientation, then solder second leg" technique is the correct professional approach for all components where alignment matters. Once both legs are soldered, adjustment requires desoldering — which is slower and risks pad damage.</em>`,
+
+  `<strong>The instructor sign-off before power-on is non-negotiable.</strong> Every board must be checked by the instructor before the battery is connected. This serves two purposes: safety (prevents damage from obvious wiring errors) and teaching (the instructor's inspection is a learning moment for the participant — they see what a professional checks). <em>The clickable pre-power checklist on this slide is interactive — participants should go through each item themselves before calling the instructor. This self-check habit is the foundation of quality control in any professional environment.</em>`,
+
+  `<strong>The power-on moment is the emotional peak of Day 7 — treat it as such.</strong> When a participant's board lights up correctly, acknowledge it. Pause. Say: "That circuit is working because of every joint you made today. Not because I helped you. Because you did it." The binary feedback of a lit LED is the most powerful motivating moment in the programme. <em>If a board does not work: stay calm. Say "Good — this is what Day 10's fault-finding is about, and we are going to practise it right now." Move the participant to Slide 10 and work through the diagnostic process with them. A fault found and fixed is more educational than a board that worked first time.</em>`,
+
+  `<strong>Run the fault-finding as a live diagnostic exercise, not a lecture.</strong> If any boards have faults, bring those participants to the front and work through the fault cards together as a group. The others watch. Seeing a real fault diagnosed and fixed in real time is far more valuable than a hypothetical example. <em>The diagnostic process stated at the bottom of the slide — Symptom → Isolate → Test → Find → Fix → Retest — is the same process used in professional repair. Introduce it by name: "This is called systematic fault isolation. It is how every technician and engineer approaches a fault in the real world."</em>`,
+
+  `<strong>The Day 8 preview should create genuine anticipation — or mild alarm.</strong> Say: "Tomorrow you are going to take apart some of what you built today. On purpose. Desoldering is a skill that every real electronics technician has — the ability to remove a component cleanly without damaging the PCB. It is harder than soldering. And it is what separates a hobbyist from a professional." <em>If any participant had a reversed component today, Day 8 is their opportunity to fix it — frame this positively: "If you have anything to correct from today, Day 8 gives you the tool to do it."</em>`
+];
+
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'dot'+(i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+function goTo(n) {
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('out');
+  const prev = cur;
+  setTimeout(() => slides[prev].classList.remove('out'), 600);
+  cur = n;
+  slides[cur].classList.add('active');
+  updateUI();
+}
+function go(dir) { const n = cur+dir; if(n>=0&&n<TOTAL) goTo(n); }
+function updateUI() {
+  document.getElementById('slideNum').textContent = (cur+1)+' / '+TOTAL;
+  document.getElementById('topCount').textContent = String(cur+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  document.getElementById('prevBtn').disabled = cur===0;
+  document.getElementById('nextBtn').disabled = cur===TOTAL-1;
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  document.getElementById('notesBody').innerHTML = NOTES[cur];
+}
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open',notesOpen);
+  document.getElementById('notesBtn').textContent = notesOpen?'SPEAKER NOTES ↓':'SPEAKER NOTES ↑';
+}
+function toggleCheck(row) { row.classList.toggle('checked'); }
+function checkItem(el) {
+  const checked = el.textContent.startsWith('☑');
+  el.textContent = (checked ? '☐' : '☑') + el.textContent.slice(1);
+  el.style.color = checked ? '#C8D8E8' : '#4ADE80';
+}
+
+document.addEventListener('keydown', e => {
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+  if(e.key==='n'||e.key==='N') toggleNotes();
+  if(e.key==='Escape'){notesOpen=false;document.getElementById('notesPanel').classList.remove('open');document.getElementById('notesBtn').textContent='SPEAKER NOTES ↑';}
+});
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e=>{cursorEl.style.left=e.clientX+'px';cursorEl.style.top=e.clientY+'px';});
+document.querySelectorAll('button,.comp-row,.seq-step,.part-row,.fault-card,.pc-row,.outcome-card,.step').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursorEl.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cursorEl.classList.remove('big'));
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);});
+updateUI();
+</script>
+</body>
+</html>
